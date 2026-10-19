@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+
+# 实验产物（体积大、可再生，不入库）
+backend/runs/
+backend/results/
+
+# 前端
+node_modules/
+dist/
+app/node_modules/
+app/dist/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

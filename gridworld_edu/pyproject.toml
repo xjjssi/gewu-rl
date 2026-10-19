@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gridworld-edu"
+version = "0.1.0"
+description = "格物RL：面向教学的网格迷宫强化学习环境与算法实现"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "格物RL 团队" }]
+dependencies = [
+    "gymnasium>=0.29",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+sb3 = ["stable-baselines3>=2.0", "torch>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["gridworld_edu*"]
