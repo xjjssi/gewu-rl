@@ -4,9 +4,10 @@ __pycache__/
 .venv*/
 venv/
 
-# 实验产物（体积大、可再生，不入库）
+# 实验产物（训练 run 体积大、可再生，不入库；报告用正式结果纳入版本管理）
 backend/runs/
-backend/results/
+backend/results/*
+!backend/results/report/
 
 # 前端
 node_modules/
@@ -19,3 +20,6 @@ app/dist/
 Thumbs.db
 .idea/
 .vscode/
+
+# 构建产物
+*.egg-info/
