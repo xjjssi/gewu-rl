@@ -208,7 +208,8 @@ export default function LiveView({ grid, training }: Props) {
           {finished && summary && (
             <p className="text-xs text-slate-400">
               训练{summary.stopped ? "被手动停止" : "完成"}：共 {summary.episodes_run} 回合
-              {summary.elapsed_sec != null && `，耗时 ${summary.elapsed_sec}s`}，贪心评估成功率 {(summary.eval_success_rate * 100).toFixed(0)}%
+              {summary.elapsed_sec != null && `，耗时 ${summary.elapsed_sec}s`}，评估成功率 {(summary.eval_success_rate * 100).toFixed(0)}%
+              {summary.eval_loop_rate != null && `（绕圈回合占比 ${(summary.eval_loop_rate * 100).toFixed(0)}%，ε=0.05 统一口径）`}
             </p>
           )}
         </CardContent>

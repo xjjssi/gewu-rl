@@ -1,7 +1,7 @@
 // RewardDesigner —— AI 奖励设计师：自然语言意图 → 奖励配置 → 三组对照实验 → 意图达成度验证
 
-import { useState } from "react"
-import { Check, FlaskConical, KeyRound, Loader2, Sparkles, Wand2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Check, FlaskConical, KeyRound, Loader2, Sparkles, Timer, Wand2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type {
+  Algo,
   IntentExperimentResult,
   LlmConfig,
   MazeGrid,
@@ -112,6 +113,23 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
   const [exampleNote, setExampleNote] = useState<string | null>(null)
   const [episodes, setEpisodes] = useState(200)
   const [nSeeds, setNSeeds] = useState(5)
+  const [algo, setAlgo] = useState<Algo>("qlearning")
+  const [elapsed, setElapsed] = useState(0)  // 实验等待计时（秒），PPO/DQN 时给用户进度感
+
+  // 意图实验是同步 HTTP：等待期间用秒表提示进度，避免用户以为页面卡死
+  useEffect(() => {
+    if (busy !== "experiment") return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [busy])
+
+  // PPO/DQN 每组最多 1.5 万步 × 3 组 × nSeeds 种子，分钟级耗时；给出量级提示
+  const slowAlgoWarning =
+    algo !== "qlearning"
+      ? `${algo.toUpperCase()} 意图实验为同步执行：3 组 × ${nSeeds} 种子 × 最多 1.5 万步，` +
+        `预计需要 ${Math.max(3, Math.round(nSeeds * 1.5))}~${Math.max(8, nSeeds * 3)} 分钟，演示建议改用 Q-Learning（秒级）。`
+      : null
 
   const llmPayload = () =>
     llm.api_key.trim() ? { llm_config: { base_url: llm.base_url, api_key: llm.api_key, model: llm.model } } : {}
@@ -161,7 +179,7 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instruction, maze: grid, algo: "qlearning",
+          instruction, maze: grid, algo,
           episodes, seed: 42, n_seeds: nSeeds, ...llmPayload(),
         }),
       })
@@ -233,6 +251,19 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
+              <Label className="text-xs text-slate-400">训练算法</Label>
+              <div className="flex gap-1">
+                {(["qlearning", "ppo", "dqn"] as Algo[]).map((a) => (
+                  <Button key={a} size="sm" variant="outline"
+                    className={cn("h-8 border-slate-600 text-xs",
+                      algo === a ? "bg-cyan-700 text-slate-100 hover:bg-cyan-600" : "bg-slate-800/60 text-slate-400 hover:bg-slate-700")}
+                    onClick={() => setAlgo(a)}>
+                    {a === "qlearning" ? "Q-Learning" : a.toUpperCase()}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs text-slate-400">每组回合数</Label>
               <Input type="number" min={20} max={2000} value={episodes}
                 onChange={(e) => setEpisodes(Math.max(20, Math.min(2000, Number(e.target.value) || 200)))}
@@ -245,6 +276,11 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
                 className="h-8 w-24 border-slate-600 bg-slate-800 text-slate-100" />
             </div>
           </div>
+          {slowAlgoWarning && (
+            <p className="flex items-start gap-1.5 rounded-md border border-amber-700/60 bg-amber-900/20 p-2 text-xs leading-relaxed text-amber-300">
+              <Timer className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {slowAlgoWarning}
+            </p>
+          )}
 
           <button
             onClick={() => setShowLlm(!showLlm)}
@@ -283,7 +319,9 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
             <Button onClick={runExperiment} disabled={!instruction.trim() || busy !== null}
               className="flex-1 bg-cyan-600 hover:bg-cyan-500">
               {busy === "experiment" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
-              {busy === "experiment" ? `三组对照实验运行中（${nSeeds} 种子 × 3 组）…` : "运行意图验证实验"}
+              {busy === "experiment"
+                ? `三组对照实验运行中（${nSeeds} 种子 × 3 组${algo !== "qlearning" ? `，${algo.toUpperCase()}` : ""}）… 已等待 ${elapsed}s`
+                : "运行意图验证实验"}
             </Button>
           </div>
           {error && <p className="text-sm text-rose-400">{error}</p>}
@@ -330,7 +368,7 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
         <Card className="border-slate-700 bg-slate-900/60">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base text-slate-100">
-              意图达成度验证（{experiment.n_seeds} 个种子的均值±标准差，每种子贪心评估 20 回合）
+              意图达成度验证（{experiment.n_seeds} 个种子的均值±标准差，每种子统一口径评估 20 回合：ε=0.05 + 平局偏向终点 + 环路检测）
             </CardTitle>
             <span className="text-xs text-slate-500">耗时 {experiment.elapsed_sec}s</span>
           </CardHeader>
@@ -378,6 +416,32 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
             <p className="whitespace-pre-line rounded-md border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
               {experiment.interpretation}
             </p>
+            {experiment.iterations && experiment.iterations.length > 1 && (
+              <div className="space-y-2 rounded-md border border-violet-700/60 bg-violet-900/10 p-3">
+                <p className="text-xs font-medium text-violet-300">
+                  闭环迭代修正（LLM 根据训练指标反馈调整奖励配置，共 {experiment.iterations.length} 轮）
+                </p>
+                {experiment.iterations.map((it) => (
+                  <div key={it.round} className="rounded-md border border-slate-700 bg-slate-800/60 p-2 text-xs">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Badge className={it.round === 0 ? "bg-slate-600" : "bg-violet-600"}>
+                        {it.round === 0 ? "首轮设计" : `第 ${it.round} 轮修正`}
+                      </Badge>
+                      <span className="font-mono text-slate-400">
+                        成功率 {(it.metrics.success_rate * 100).toFixed(0)}% · 平均步数 {it.metrics.avg_steps.toFixed(0)}
+                        · 踩陷率 {(it.metrics.trap_trigger_rate * 100).toFixed(0)}%
+                      </span>
+                      <span className="font-mono text-slate-500">
+                        step {it.reward_config.step_penalty} / trap {it.reward_config.trap_penalty}
+                        / goal {it.reward_config.goal_reward} / 塑形{it.reward_config.potential_shaping ? "开" : "关"}
+                      </span>
+                    </div>
+                    {it.note && <p className="whitespace-pre-line leading-relaxed text-slate-300">{it.note}</p>}
+                    {it.judgement && <p className="leading-relaxed text-emerald-300">✅ {it.judgement}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
             <Button size="sm" variant="outline" onClick={onGoCompare}
               className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">
               到「实验对比」查看各组训练曲线 →

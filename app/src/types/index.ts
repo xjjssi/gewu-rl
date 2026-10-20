@@ -61,6 +61,9 @@ export interface PolicyCell {
 
 export interface TrainSummary {
   eval_success_rate: number
+  eval_loop_rate?: number
+  eval_stable_success_rate?: number
+  eval_pure_greedy_success_rate?: number
   policy: { cells: PolicyCell[] }
   episodes_run: number
   stopped: boolean
@@ -145,6 +148,15 @@ export interface IntentGroup {
   metrics: BehaviorMetrics
 }
 
+/** 闭环迭代的一轮：round 0 = 首轮设计，后续 = LLM 根据指标反馈给出的修正版 */
+export interface IntentIteration {
+  round: number
+  reward_config: RewardConfigForm
+  metrics: BehaviorMetrics
+  note?: string        // 本轮配置的设计/修正理由
+  judgement?: string   // LLM 判断"意图已达成"时给出的结论（不再继续迭代）
+}
+
 export interface IntentExperimentResult {
   design: RewardDesignResult
   /** 三组对照：默认方案 / 默认+PBRS / AI 方案（AI 价值 = 相对第二组的增量） */
@@ -157,6 +169,8 @@ export interface IntentExperimentResult {
   seeds: number[]
   interpretation: string
   elapsed_sec: number
+  /** 闭环迭代过程（仅 LLM 路径多于 1 轮；规则引擎路径只有 round 0） */
+  iterations?: IntentIteration[]
 }
 
 export interface LlmConfig {
