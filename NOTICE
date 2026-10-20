@@ -71,6 +71,9 @@
 - Tailwind CSS 3.4.19 — Copyright (c) Tailwind Labs, Inc.
 - Radix UI 各组件包（@radix-ui/react-*，1.x~2.x）— Copyright (c) WorkOS
 - Recharts 2.15.4 — Copyright (c) Recharts Group
+- shadcn/ui（源码引入，见 app/src/components/ui/）— MIT License，
+  Copyright (c) shadcn。组件源码按其官方使用方式直接复制进本仓库，
+  并由团队按需修改（主题配色、交互行为），非 npm 依赖调用。
 - lucide-react 0.562.0 — **ISC License**，Copyright (c) Lucide Contributors
 - class-variance-authority 0.7.1 — **Apache-2.0**，Copyright (c) Joe Bell
 - clsx、tailwind-merge、cmdk、date-fns、embla-carousel-react、input-otp、
@@ -88,7 +91,8 @@
 四、说明
 --------
 
-- 上述组件的权利归各自著作权人所有；本作品未修改其源代码，仅作为依赖调用。
+- 上述组件的权利归各自著作权人所有。除 shadcn/ui 组件为源码引入并经团队
+  按需修改外，其余组件均未修改源代码，仅作为依赖调用。
 - MIT / BSD / ISC / Apache-2.0 均为宽松许可证，主要义务为保留版权声明与
   许可证文本，本文件即用于履行该义务；无 copyleft 传染性风险。
 - 本作品自主开发部分（gridworld_edu 教学包、后端编排、前端界面、
