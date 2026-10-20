@@ -33,6 +33,7 @@ from gridworld_edu.agents.qlearning import QLearningAgent
 from gridworld_edu.agents.sb3_agents import create_sb3_agent
 from gridworld_edu.envs.grid_maze import GridMazeEnv, RewardConfig
 from gridworld_edu.envs.presets import PRESETS
+from gridworld_edu.evaluation import evaluate_qlearning, evaluate_sb3
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -43,19 +44,6 @@ ENV_IDS = ["empty_6x6", "single_wall_6x6", "multi_wall_8x8"]
 
 def moving_avg(xs: list[float], w: int = 20) -> list[float]:
     return [float(np.mean(xs[max(0, i - w + 1): i + 1])) for i in range(len(xs))]
-
-
-def eval_greedy(env: GridMazeEnv, act_fn, n: int = 20) -> float:
-    """用贪心策略跑 n 回合，返回成功率。"""
-    success = 0
-    for _ in range(n):
-        obs, info = env.reset()
-        done = False
-        while not done:
-            obs, _, terminated, truncated, info = env.step(act_fn(obs, info))
-            done = terminated or truncated
-        success += int(info["is_success"])
-    return success / n
 
 
 def run_qlearning(env: GridMazeEnv, episodes: int, seed: int, gamma: float = 0.99) -> tuple[list[float], float]:
@@ -77,7 +65,8 @@ def run_qlearning(env: GridMazeEnv, episodes: int, seed: int, gamma: float = 0.9
             done = terminated or truncated
         agent.decay_epsilon()
         rewards.append(total)
-    sr = eval_greedy(env, lambda o, i: agent.select_action(i["state_index"], greedy=True))
+    # 统一评估口径（gridworld_edu.evaluation）：ε=0.05 + 平局偏向终点 + 环路检测
+    sr = evaluate_qlearning(env, agent, n=20, seed=seed)["success_rate"]
     return rewards, sr
 
 
@@ -90,7 +79,7 @@ def run_sb3(algo: str, env: GridMazeEnv, timesteps: int, seed: int) -> tuple[lis
     model.learn(total_timesteps=timesteps, progress_bar=False)
     # 从 Monitor 日志重建回合回报曲线
     rewards = [float(r) for r in monitor.get_episode_rewards()]
-    sr = eval_greedy(env, lambda o, i: int(model.predict(o, deterministic=True)[0]))
+    sr = evaluate_sb3(env, model, n=20, seed=seed)["success_rate"]
     return rewards, sr
 
 

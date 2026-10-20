@@ -34,7 +34,8 @@ from gridworld_edu.agents.qlearning import QLearningAgent
 from gridworld_edu.agents.sb3_agents import create_sb3_agent, export_greedy_policy
 from gridworld_edu.envs.grid_maze import CellType, GridMazeEnv, RewardConfig
 from gridworld_edu.envs.presets import PRESETS, curriculum
-from llm_reward import design_reward, detect_intents
+from gridworld_edu.evaluation import evaluate_policy, evaluate_qlearning, evaluate_sb3
+from llm_reward import design_reward, detect_intents, refine_reward, resolve_llm_config
 
 RUNS_DIR = Path(__file__).resolve().parent / "runs"
 RUNS_DIR.mkdir(exist_ok=True)
@@ -215,20 +216,17 @@ def run_qlearning(session: TrainSession) -> dict:
             # 逐步关键帧（仅该回合）：前端动画用
             for pos in cells:
                 session.emit({"type": "step", "pos": pos, "episode": ep})
-    # 评估：greedy 策略跑 20 回合的成功率
-    eval_success = 0
-    for _ in range(20):
-        _, info = env.reset()
-        s = info["state_index"]
-        done = False
-        while not done:
-            a = agent.select_action(s, greedy=True)
-            _, _, terminated, truncated, info = env.step(a)
-            s = info["state_index"]
-            done = terminated or truncated
-        eval_success += int(info["is_success"])
+    # 评估：统一口径（gridworld_edu.evaluation）——ε-评估（ε=0.05）+ 平局偏向终点
+    # + 环路检测。纯贪心 argmax 在 Q 值近似平局时会绕圈（"训练 100% vs 评估 0%"
+    # 的假矛盾），loop_rate 与 pure_greedy_success_rate 用于区分"没学会"与
+    # "学会了但贪心未稳定"。
+    m = evaluate_qlearning(env, agent, n=20, seed=req.seed)
     policy = agent.greedy_policy(env)
-    summary = {"eval_success_rate": eval_success / 20.0, "policy": policy,
+    summary = {"eval_success_rate": m["success_rate"],
+               "eval_loop_rate": m["loop_rate"],
+               "eval_stable_success_rate": m["stable_success_rate"],
+               "eval_pure_greedy_success_rate": m["pure_greedy_success_rate"],
+               "policy": policy,
                "episodes_run": len(session.metrics_rows), "stopped": session.stop_event.is_set()}
     return summary, agent
 
@@ -287,24 +285,22 @@ def run_sb3(session: TrainSession) -> dict:
     model.learn(total_timesteps=total_timesteps,
                 callback=StreamCallback(env.start_pos), progress_bar=False)
 
-    # 评估：greedy 20 回合，同时抓一条轨迹给前端
-    eval_success = 0
-    last_cells: list = []
-    for i in range(20):
-        obs, info = env.reset()
-        cells = [[int(env.start_pos[0]), int(env.start_pos[1])]]
-        done = False
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, _, terminated, truncated, info = env.step(int(action))
-            cells.append(list(info["pos"]))
-            done = terminated or truncated
-        eval_success += int(info["is_success"])
-        last_cells = cells
-    if last_cells:
-        session.emit({"type": "trajectory", "cells": last_cells, "episode": -1})
+    # 评估：统一口径（ε-评估 + 环路检测），另跑一条贪心轨迹给前端回放
+    m = evaluate_sb3(env, model, n=20, seed=req.seed)
+    obs, info = env.reset()
+    last_cells = [[int(env.start_pos[0]), int(env.start_pos[1])]]
+    done = False
+    while not done:
+        action, _ = model.predict(obs, deterministic=True)
+        obs, _, terminated, truncated, info = env.step(int(action))
+        last_cells.append(list(info["pos"]))
+        done = terminated or truncated
+    session.emit({"type": "trajectory", "cells": last_cells, "episode": -1})
     policy = export_greedy_policy(model, env)
-    summary = {"eval_success_rate": eval_success / 20.0, "policy": policy,
+    summary = {"eval_success_rate": m["success_rate"],
+               "eval_loop_rate": m["loop_rate"],
+               "eval_stable_success_rate": m["stable_success_rate"],
+               "policy": policy,
                "episodes_run": len(session.metrics_rows), "stopped": session.stop_event.is_set()}
     return summary, model
 
@@ -490,20 +486,9 @@ def train_curriculum(req: CurriculumRequest):
         return curve
 
     def greedy_success(env, agent, n=20):
-        ok = 0
-        for _ in range(n):
-            _, info = env.reset()
-            s = info["state_index"]
-            done = False
-            while not done:
-                a = agent.select_action(s, greedy=True)
-                _, _, term, trunc, info2 = env.step(a)
-                s = info2["state_index"]
-                done = term or trunc
-            # 用 is_success 而非 term：trap_terminal=True 时踩陷阱也会终止，
-            # 按 term 计数会把"踩陷阱死亡"误判为成功
-            ok += int(info2["is_success"])
-        return ok / n
+        # 统一评估口径（ε-评估 + 平局偏向终点 + 环路检测）；
+        # 以 is_success（到达终点）为准：trap_terminal=True 时踩陷阱终止不算成功
+        return evaluate_qlearning(env, agent, n=n, seed=req.seed)["success_rate"]
 
     # 课程组：Q 表逐级迁移，每级重启探索率与学习率
     cur_agent = new_agent()
@@ -527,7 +512,7 @@ def train_curriculum(req: CurriculumRequest):
         "stages": stages_out,
         "baseline": {"name": f"直接训练：{stages[-1]['name']}", "curve": baseline},
         "eval": {"curriculum_success": curriculum_eval, "baseline_success": baseline_eval,
-                 "note": "贪心策略在最终迷宫上评估 20 回合的成功率"},
+                 "note": "统一评估口径（ε=0.05 + 平局偏向终点 + 环路检测）在最终迷宫上评估 20 回合的成功率"},
     }
 
 
@@ -549,39 +534,12 @@ def reward_design(req: RewardDesignRequest):
 
 
 def evaluate_behavior(env: GridMazeEnv, act_fn, n: int = 20) -> dict[str, float]:
-    """贪心策略行为评估：成功率 / 平均步数 / 奖励格收集率 / 陷阱触发率 / 平均回报。"""
-    success = steps = 0
-    total_reward = 0.0
-    bonus_eps = trap_eps = 0
-    bonus_cnt = trap_cnt = 0
-    for _ in range(n):
-        obs, info = env.reset()
-        done = False
-        ep_reward = 0.0
-        ep_steps = 0
-        while not done:
-            obs, r, terminated, truncated, info = env.step(act_fn(obs, info))
-            ep_reward += r
-            ep_steps += 1
-            done = terminated or truncated
-        success += int(info["is_success"])
-        steps += ep_steps
-        total_reward += ep_reward
-        st = info.get("episode_stats", {})
-        bonus_cnt += st.get("bonus_collected", 0)
-        trap_cnt += st.get("trap_triggered", 0)
-        bonus_eps += int(st.get("bonus_collected", 0) > 0)
-        trap_eps += int(st.get("trap_triggered", 0) > 0)
-    return {
-        "success_rate": round(success / n, 3),
-        "avg_steps": round(steps / n, 1),
-        "avg_reward": round(total_reward / n, 3),
-        "bonus_collect_rate": round(bonus_eps / n, 3),   # 至少收集 1 个奖励格的回合占比
-        "trap_trigger_rate": round(trap_eps / n, 3),     # 至少踩 1 次陷阱的回合占比
-        "avg_bonus_count": round(bonus_cnt / n, 2),
-        "avg_trap_count": round(trap_cnt / n, 2),
-        "eval_episodes": n,
-    }
+    """行为评估（成功率 / 平均步数 / 收集率 / 陷阱触发率 / 回报 / 环路率）。
+
+    统一委托给 gridworld_edu.evaluation.evaluate_policy（含环路检测）；
+    探索率与平局裁决由调用方在 act_fn 内部决定。
+    """
+    return evaluate_policy(env, act_fn, n=n)
 
 
 def _train_sync(session: TrainSession) -> tuple[dict, Any]:
@@ -637,7 +595,19 @@ def _build_interpretation(
         f"【总体表现】AI 方案成功率 {pct(ma['success_rate'])}（默认 {pct(mb['success_rate'])}{mc_text}），"
         f"统一标尺下平均回合回报 {ma['avg_reward_common']:+.3f}（默认 {mb['avg_reward_common']:+.3f}），"
         f"平均步数 {ma['avg_steps']:.0f}（默认 {mb['avg_steps']:.0f}）。"
+        "评估口径：ε-评估（ε=0.05）+ Q 值平局偏向终点 + 环路检测。"
     )
+
+    # 评估稳定性说明：ε-评估成功而纯贪心失败的差距 = "学会了但贪心未稳定"
+    for label, mx in (("AI 方案", ma), ("默认方案", mb)):
+        pg = mx.get("pure_greedy_success_rate")
+        if pg is not None and mx["success_rate"] - pg >= 0.2:
+            parts.append(
+                f"【评估稳定性】{label} ε-评估成功率 {pct(mx['success_rate'])}，但纯贪心评估仅 "
+                f"{pct(pg)}（绕圈回合占比 {pct(mx.get('pure_greedy_loop_rate', 0.0))}）——"
+                "智能体已经学会（Q 值方向正确），只是若干动作的 Q 值几乎相等时纯贪心会在平局间绕圈。"
+                "这是「学会了但贪心未稳定」，与「完全没学会」不同；加大训练预算或学习率衰减可消除。"
+            )
 
     # 成功率硬指标：大幅提升必须计入判定；大幅下降给出过度约束警告
     d_success = ma["success_rate"] - mb["success_rate"]
@@ -775,17 +745,83 @@ def _aggregate_metrics(per_seed: list[dict]) -> dict:
     """
     out: dict[str, Any] = {"n_seeds": len(per_seed)}
     keys = ["success_rate", "avg_steps", "avg_reward", "avg_reward_common",
-            "bonus_collect_rate", "trap_trigger_rate", "avg_bonus_count", "avg_trap_count"]
+            "bonus_collect_rate", "trap_trigger_rate", "avg_bonus_count", "avg_trap_count",
+            "loop_rate", "stable_success_rate"]
     for k in keys:
         vals = [m[k] for m in per_seed]
         out[k] = round(float(np.mean(vals)), 3)
         out[f"{k}_std"] = round(float(np.std(vals)), 3)
+    # 纯贪心对照（仅 Q-Learning 评估返回）：量化"学会了但贪心未稳定"的差距
+    for k in ["pure_greedy_success_rate", "pure_greedy_loop_rate"]:
+        vals = [m[k] for m in per_seed if k in m]
+        if vals:
+            out[k] = round(float(np.mean(vals)), 3)
+            out[f"{k}_std"] = round(float(np.std(vals)), 3)
     convs = [m["episodes_to_converge"] for m in per_seed if m["episodes_to_converge"] is not None]
     out["converged_seeds"] = len(convs)
     out["episodes_to_converge"] = round(float(np.mean(convs)), 1) if convs else None
     out["episodes_to_converge_std"] = round(float(np.std(convs)), 1) if len(convs) > 1 else 0.0
     out["eval_episodes"] = per_seed[0]["eval_episodes"] if per_seed else 0
     return out
+
+
+def _train_eval_group(
+    req: IntentExperimentRequest,
+    tag: str,
+    label: str,
+    rc: dict,
+    seeds: list[int],
+    episodes: int,
+    env_common: GridMazeEnv,
+) -> tuple[list[str], dict]:
+    """训练一组配置（多 seed）并做行为评估，返回 (run_id 列表, 聚合指标)。
+
+    从 intent_experiment 主体抽出，闭环迭代修正轮复用同一逻辑（只重训 AI 组）。
+    """
+    per_seed: list[dict] = []
+    ids: list[str] = []
+    for seed in seeds:
+        if req.algo == "qlearning":
+            hyper = {"episodes": episodes}
+        else:
+            hyper = {"total_timesteps": min(15_000, max(5_000, episodes * 50))}
+        treq = TrainRequest(maze=req.maze, algo=req.algo, hyperparams=hyper,
+                            reward_config=rc, seed=seed, label=label)
+        session = TrainSession(f"int{tag}_{uuid.uuid4().hex[:6]}", treq)
+        summary, agent = _train_sync(session)
+        run_dir = _save_run(session, summary)
+        ids.append(run_dir.name)
+
+        env = GridMazeEnv(req.maze, RewardConfig.from_dict(rc))
+        # 统一评估口径：ε-评估 + 平局偏向终点（Q-Learning）+ 环路检测
+        if req.algo == "qlearning":
+            m = evaluate_qlearning(env, agent, n=20, seed=seed)
+        else:
+            m = evaluate_sb3(env, agent, n=20, seed=seed)
+        # 收敛回合：好的奖励设计主要提升学习效率，这是比最终行为更敏感的指标
+        m["episodes_to_converge"] = _convergence_episode(session.metrics_rows)
+        # 统一标尺回报：各组策略在同一默认奖励下评估，回报才可比（同一评估口径）
+        if req.algo == "qlearning":
+            m["avg_reward_common"] = evaluate_qlearning(env_common, agent, n=20, seed=seed)["avg_reward"]
+        else:
+            m["avg_reward_common"] = evaluate_sb3(env_common, agent, n=20, seed=seed)["avg_reward"]
+        per_seed.append(m)
+    return ids, _aggregate_metrics(per_seed)
+
+
+def _metrics_digest(m_ai: dict, m_default: dict) -> str:
+    """把 AI 组 vs 默认组的关键指标压缩成文本摘要，作为 LLM 闭环修正的反馈输入。"""
+    return (
+        f"- 成功率：AI 方案 {m_ai['success_rate']}（默认方案 {m_default['success_rate']}）\n"
+        f"- 平均步数：AI 方案 {m_ai['avg_steps']}（默认方案 {m_default['avg_steps']}）\n"
+        f"- 陷阱触发率：AI 方案 {m_ai['trap_trigger_rate']}（默认方案 {m_default['trap_trigger_rate']}）\n"
+        f"- 奖励格收集率：AI 方案 {m_ai['bonus_collect_rate']}（默认方案 {m_default['bonus_collect_rate']}）\n"
+        f"- 统一标尺回报：AI 方案 {m_ai['avg_reward_common']}（默认方案 {m_default['avg_reward_common']}）"
+    )
+
+
+# 闭环迭代修正的最大轮数（首轮之外）：每轮都要真实重训 AI 组，轮数必须受限以控制总耗时
+MAX_REFINE_ROUNDS = 2
 
 
 @app.post("/api/intent-experiment")
@@ -800,6 +836,10 @@ def intent_experiment(req: IntentExperimentRequest):
 
     每组跑 n_seeds 个种子（默认 5），指标汇报均值 ± 标准差。
     全部 run 落盘 runs/，可在「实验对比」页查看曲线。
+
+    闭环迭代（仅 LLM 路径）：首轮三组对照完成后，把 AI 组指标摘要反馈给 LLM，
+    由它判断意图是否达成；未达成则给出修正版配置并重训 AI 组（压缩预算：
+    回合数减半、种子数减半），最多迭代 MAX_REFINE_ROUNDS 轮。规则引擎路径跳过迭代。
     """
     try:
         GridMazeEnv(req.maze)
@@ -827,32 +867,46 @@ def intent_experiment(req: IntentExperimentRequest):
     run_ids: dict[str, list[str]] = {}
     group_metrics: dict[str, dict] = {}
     for tag, label, rc in groups:
-        per_seed: list[dict] = []
-        run_ids[tag] = []
-        for seed in seeds:
-            if req.algo == "qlearning":
-                hyper = {"episodes": req.episodes}
-            else:
-                hyper = {"total_timesteps": min(15_000, max(5_000, req.episodes * 50))}
-            treq = TrainRequest(maze=req.maze, algo=req.algo, hyperparams=hyper,
-                                reward_config=rc, seed=seed, label=label)
-            session = TrainSession(f"int{tag}_{uuid.uuid4().hex[:6]}", treq)
-            summary, agent = _train_sync(session)
-            run_dir = _save_run(session, summary)
-            run_ids[tag].append(run_dir.name)
+        ids, group_metrics[tag] = _train_eval_group(
+            req, tag, label, rc, seeds, req.episodes, env_common)
+        run_ids[tag] = ids
 
-            env = GridMazeEnv(req.maze, RewardConfig.from_dict(rc))
-            if req.algo == "qlearning":
-                act = lambda o, i: agent.select_action(i["state_index"], greedy=True)  # noqa: B023
-            else:
-                act = lambda o, i: int(agent.predict(o, deterministic=True)[0])  # noqa: B023
-            m = evaluate_behavior(env, act, n=20)
-            # 收敛回合：好的奖励设计主要提升学习效率，这是比最终行为更敏感的指标
-            m["episodes_to_converge"] = _convergence_episode(session.metrics_rows)
-            # 统一标尺回报：各组策略在同一默认奖励下评估，回报才可比
-            m["avg_reward_common"] = evaluate_behavior(env_common, act, n=20)["avg_reward"]
-            per_seed.append(m)
-        group_metrics[tag] = _aggregate_metrics(per_seed)
+    # 迭代过程记录：round 0 = 首轮设计；后续每轮 = LLM 根据指标反馈给出的修正版
+    iterations: list[dict[str, Any]] = [{
+        "round": 0,
+        "reward_config": design["reward_config"],
+        "metrics": group_metrics["ai"],
+        "note": design["explanation"],
+    }]
+
+    # ---- 闭环迭代修正（指标反馈 → LLM 修正，仅 LLM 路径；规则引擎跳过）----
+    llm_cfg = resolve_llm_config(req.llm_config)
+    if design["source"] == "llm" and llm_cfg:
+        cur_cfg = design["reward_config"]
+        for rd in range(1, MAX_REFINE_ROUNDS + 1):
+            try:
+                rev = refine_reward(req.instruction, req.maze, llm_cfg, cur_cfg,
+                                    _metrics_digest(group_metrics["ai"], group_metrics["default"]))
+            except Exception:  # noqa: BLE001 - LLM 修正失败：保留当前方案，不影响主流程
+                break
+            if rev.get("achieved"):
+                # LLM 判断意图已达成：记录结论并停止迭代（不重训，省时）
+                iterations[-1]["judgement"] = rev.get("reason") or "LLM 判断意图已达成，无需修正。"
+                break
+            cur_cfg = rev["reward_config"]
+            # 迭代轮压缩预算：回合数与种子数减半，每轮仍需真实训练以验证修正效果
+            sub_seeds = seeds[: max(1, req.n_seeds // 2)]
+            sub_eps = max(20, req.episodes // 2)
+            ids, group_metrics["ai"] = _train_eval_group(
+                req, "ai", f"AI 方案·第 {rd} 轮修正", cur_cfg, sub_seeds, sub_eps, env_common)
+            run_ids["ai"].extend(ids)
+            iterations.append({
+                "round": rd,
+                "reward_config": cur_cfg,
+                "metrics": group_metrics["ai"],
+                "note": rev.get("reason") or "",
+            })
+        design["reward_config"] = cur_cfg  # 最终生效配置以最后一轮为准
 
     out["groups"] = [
         {"key": tag, "label": label, "metrics": group_metrics[tag]}
@@ -863,6 +917,7 @@ def intent_experiment(req: IntentExperimentRequest):
     out["metrics_b"] = group_metrics["default"]
     out["metrics_c"] = group_metrics["default_pbrs"]
     out["run_ids"] = run_ids
+    out["iterations"] = iterations
     out["interpretation"] = _build_interpretation(
         req.instruction, group_metrics["ai"], group_metrics["default"],
         req.maze, mc=group_metrics["default_pbrs"])

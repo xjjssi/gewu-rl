@@ -1,0 +1,62 @@
+{
+  "ppo_empty_20k": {
+    "env": "empty_6x6",
+    "algo": "ppo",
+    "timesteps": 20000,
+    "reward_config": {},
+    "success_mean": 1.0,
+    "success_std": 0.0,
+    "seeds": 3
+  },
+  "ppo_wall_shaping_20k": {
+    "env": "single_wall_6x6",
+    "algo": "ppo",
+    "timesteps": 20000,
+    "reward_config": {
+      "potential_shaping": true
+    },
+    "success_mean": 1.0,
+    "success_std": 0.0,
+    "seeds": 3
+  },
+  "ppo_wall_noshaping_20k": {
+    "env": "single_wall_6x6",
+    "algo": "ppo",
+    "timesteps": 20000,
+    "reward_config": {},
+    "success_mean": 0.667,
+    "success_std": 0.471,
+    "seeds": 3
+  },
+  "ppo_wall_shaping_40k": {
+    "env": "single_wall_6x6",
+    "algo": "ppo",
+    "timesteps": 40000,
+    "reward_config": {
+      "potential_shaping": true
+    },
+    "success_mean": 1.0,
+    "success_std": 0.0,
+    "seeds": 3
+  },
+  "ppo_wall_noshaping_40k": {
+    "env": "single_wall_6x6",
+    "algo": "ppo",
+    "timesteps": 40000,
+    "reward_config": {},
+    "success_mean": 0.667,
+    "success_std": 0.471,
+    "seeds": 3
+  },
+  "dqn_wall_shaping_30k": {
+    "env": "single_wall_6x6",
+    "algo": "dqn",
+    "timesteps": 30000,
+    "reward_config": {
+      "potential_shaping": true
+    },
+    "success_mean": 1.0,
+    "success_std": 0.0,
+    "seeds": 3
+  }
+}

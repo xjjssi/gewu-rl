@@ -1,0 +1,277 @@
+{
+  "E1_baselines": {
+    "seeds": 20,
+    "episodes": 600,
+    "rows": [
+      {
+        "env": "empty_6x6",
+        "name": "空场 6×6",
+        "algo": "qlearning",
+        "success_mean": 1.0,
+        "success_std": 0.0,
+        "converge_mean": 31.2,
+        "seeds": 20
+      },
+      {
+        "env": "empty_6x6",
+        "name": "空场 6×6",
+        "algo": "random",
+        "success_mean": 0.7,
+        "success_std": 0,
+        "converge_mean": null,
+        "seeds": 1
+      },
+      {
+        "env": "single_wall_6x6",
+        "name": "单障碍 6×6",
+        "algo": "qlearning",
+        "success_mean": 1.0,
+        "success_std": 0.0,
+        "converge_mean": 57.6,
+        "seeds": 20
+      },
+      {
+        "env": "single_wall_6x6",
+        "name": "单障碍 6×6",
+        "algo": "random",
+        "success_mean": 0.6,
+        "success_std": 0,
+        "converge_mean": null,
+        "seeds": 1
+      },
+      {
+        "env": "multi_wall_8x8",
+        "name": "多障碍 8×8",
+        "algo": "qlearning",
+        "success_mean": 1.0,
+        "success_std": 0.0,
+        "converge_mean": 58.3,
+        "seeds": 20
+      },
+      {
+        "env": "multi_wall_8x8",
+        "name": "多障碍 8×8",
+        "algo": "random",
+        "success_mean": 0.4,
+        "success_std": 0,
+        "converge_mean": null,
+        "seeds": 1
+      },
+      {
+        "env": "big_maze_10x10",
+        "name": "大迷宫 10×10",
+        "algo": "qlearning",
+        "success_mean": 1.0,
+        "success_std": 0.0,
+        "converge_mean": 54.4,
+        "seeds": 20
+      },
+      {
+        "env": "big_maze_10x10",
+        "name": "大迷宫 10×10",
+        "algo": "random",
+        "success_mean": 0.2,
+        "success_std": 0,
+        "converge_mean": null,
+        "seeds": 1
+      }
+    ]
+  },
+  "E2_pbrs_ablation": {
+    "seeds": 20,
+    "episodes": 150,
+    "rows": [
+      {
+        "potential_shaping": true,
+        "converge_mean": 22.4,
+        "converge_std": 1.7,
+        "success_rate_mean": 1.0,
+        "success_rate_std": 0.0,
+        "avg_steps_mean": 18.965,
+        "avg_steps_std": 0.271,
+        "loop_rate_mean": 0.013,
+        "loop_rate_std": 0.027,
+        "stable_success_rate_mean": 0.988,
+        "stable_success_rate_std": 0.027,
+        "bonus_collect_rate_mean": 0.0,
+        "bonus_collect_rate_std": 0.0,
+        "trap_trigger_rate_mean": 0.0,
+        "trap_trigger_rate_std": 0.0,
+        "pure_greedy_success_rate_mean": 1.0,
+        "pure_greedy_success_rate_std": 0.0,
+        "pure_greedy_loop_rate_mean": 0.0,
+        "pure_greedy_loop_rate_std": 0.0
+      },
+      {
+        "potential_shaping": false,
+        "converge_mean": 29.2,
+        "converge_std": 3.2,
+        "success_rate_mean": 1.0,
+        "success_rate_std": 0.0,
+        "avg_steps_mean": 18.89,
+        "avg_steps_std": 0.257,
+        "loop_rate_mean": 0.02,
+        "loop_rate_std": 0.033,
+        "stable_success_rate_mean": 0.98,
+        "stable_success_rate_std": 0.033,
+        "bonus_collect_rate_mean": 0.0,
+        "bonus_collect_rate_std": 0.0,
+        "trap_trigger_rate_mean": 0.0,
+        "trap_trigger_rate_std": 0.0,
+        "pure_greedy_success_rate_mean": 0.35,
+        "pure_greedy_success_rate_std": 0.477,
+        "pure_greedy_loop_rate_mean": 0.65,
+        "pure_greedy_loop_rate_std": 0.477
+      }
+    ],
+    "eval_protocol": "ε=0.05 + 平局偏向终点 + 环路检测（loop_threshold=2）；pure_greedy_* 为旧口径纯贪心对照"
+  },
+  "E3_intent_experiment": {
+    "instruction": "收集所有奖励格，哪怕绕路也要最终到达终点",
+    "env": "multi_wall_8x8",
+    "seeds": 20,
+    "episodes": 150,
+    "design": {
+      "reward_config": {
+        "step_penalty": -0.005,
+        "wall_penalty": -0.05,
+        "goal_reward": 1.0,
+        "bonus_reward": 2.0,
+        "trap_penalty": -1.0,
+        "trap_terminal": false,
+        "potential_shaping": false
+      },
+      "explanation": "识别到【收集奖励】意图：奖励格收益设为 2.0，每步代价设为 -0.005，让「绕路去收集」在期望回报上划算。关闭势函数塑形，避免「直奔终点」的梯度信号盖过收集动机。",
+      "source": "fallback"
+    },
+    "groups": [
+      {
+        "group": "默认",
+        "reward_config": {},
+        "converge_mean": 33.5,
+        "converge_std": 4.8,
+        "success_rate_mean": 0.75,
+        "success_rate_std": 0.087,
+        "avg_steps_mean": 79.49,
+        "avg_steps_std": 19.638,
+        "loop_rate_mean": 0.28,
+        "loop_rate_std": 0.098,
+        "stable_success_rate_mean": 0.72,
+        "stable_success_rate_std": 0.098,
+        "bonus_collect_rate_mean": 0.625,
+        "bonus_collect_rate_std": 0.235,
+        "trap_trigger_rate_mean": 0.003,
+        "trap_trigger_rate_std": 0.011,
+        "pure_greedy_success_rate_mean": 0.5,
+        "pure_greedy_success_rate_std": 0.5,
+        "pure_greedy_loop_rate_mean": 0.5,
+        "pure_greedy_loop_rate_std": 0.5
+      },
+      {
+        "group": "默认+PBRS",
+        "reward_config": {
+          "potential_shaping": true
+        },
+        "converge_mean": 23.4,
+        "converge_std": 2.7,
+        "success_rate_mean": 1.0,
+        "success_rate_std": 0.0,
+        "avg_steps_mean": 14.705,
+        "avg_steps_std": 0.258,
+        "loop_rate_mean": 0.015,
+        "loop_rate_std": 0.028,
+        "stable_success_rate_mean": 0.985,
+        "stable_success_rate_std": 0.028,
+        "bonus_collect_rate_mean": 0.0,
+        "bonus_collect_rate_std": 0.0,
+        "trap_trigger_rate_mean": 0.005,
+        "trap_trigger_rate_std": 0.015,
+        "pure_greedy_success_rate_mean": 1.0,
+        "pure_greedy_success_rate_std": 0.0,
+        "pure_greedy_loop_rate_mean": 0.0,
+        "pure_greedy_loop_rate_std": 0.0
+      },
+      {
+        "group": "AI生成",
+        "reward_config": {
+          "step_penalty": -0.005,
+          "wall_penalty": -0.05,
+          "goal_reward": 1.0,
+          "bonus_reward": 2.0,
+          "trap_penalty": -1.0,
+          "trap_terminal": false,
+          "potential_shaping": false
+        },
+        "converge_mean": 32.8,
+        "converge_std": 3.4,
+        "success_rate_mean": 0.958,
+        "success_rate_std": 0.083,
+        "avg_steps_mean": 30.665,
+        "avg_steps_std": 18.962,
+        "loop_rate_mean": 0.06,
+        "loop_rate_std": 0.083,
+        "stable_success_rate_mean": 0.94,
+        "stable_success_rate_std": 0.083,
+        "bonus_collect_rate_mean": 0.905,
+        "bonus_collect_rate_std": 0.156,
+        "trap_trigger_rate_mean": 0.003,
+        "trap_trigger_rate_std": 0.011,
+        "pure_greedy_success_rate_mean": 0.7,
+        "pure_greedy_success_rate_std": 0.458,
+        "pure_greedy_loop_rate_mean": 0.3,
+        "pure_greedy_loop_rate_std": 0.458
+      }
+    ],
+    "eval_protocol": "ε=0.05 + 平局偏向终点 + 环路检测（loop_threshold=2）；pure_greedy_* 为旧口径纯贪心对照",
+    "note": "主案例为多目标权衡意图（收集+到达）：AI 增量体现在奖励格收集率（相对默认+PBRS 组），而非成功率；成功率各组均接近 1。"
+  },
+  "E4_curriculum": {
+    "note": "逆向课程（起点距终点 1→5→10→18 曼哈顿距离）50 回合×4 级，Q 表迁移 + 阶段内探索率重启；直接组 200 回合。最终迷宫统一口径评估 20 回合（ε=0.05 + 平局偏向终点 + 环路检测）。",
+    "budget": 200,
+    "seeds": 20,
+    "groups": [
+      {
+        "mode": "curriculum",
+        "converge_mean": 20.0,
+        "converge_std": 0.0,
+        "success_rate_mean": 1.0,
+        "success_rate_std": 0.0,
+        "avg_steps_mean": 18.93,
+        "avg_steps_std": 0.245,
+        "loop_rate_mean": 0.025,
+        "loop_rate_std": 0.034,
+        "stable_success_rate_mean": 0.975,
+        "stable_success_rate_std": 0.034,
+        "bonus_collect_rate_mean": 0.0,
+        "bonus_collect_rate_std": 0.0,
+        "trap_trigger_rate_mean": 0.0,
+        "trap_trigger_rate_std": 0.0,
+        "pure_greedy_success_rate_mean": 0.95,
+        "pure_greedy_success_rate_std": 0.218,
+        "pure_greedy_loop_rate_mean": 0.05,
+        "pure_greedy_loop_rate_std": 0.218
+      },
+      {
+        "mode": "direct",
+        "converge_mean": 32.4,
+        "converge_std": 2.7,
+        "success_rate_mean": 1.0,
+        "success_rate_std": 0.0,
+        "avg_steps_mean": 18.91,
+        "avg_steps_std": 0.236,
+        "loop_rate_mean": 0.023,
+        "loop_rate_std": 0.033,
+        "stable_success_rate_mean": 0.977,
+        "stable_success_rate_std": 0.033,
+        "bonus_collect_rate_mean": 0.0,
+        "bonus_collect_rate_std": 0.0,
+        "trap_trigger_rate_mean": 0.0,
+        "trap_trigger_rate_std": 0.0,
+        "pure_greedy_success_rate_mean": 0.85,
+        "pure_greedy_success_rate_std": 0.357,
+        "pure_greedy_loop_rate_mean": 0.15,
+        "pure_greedy_loop_rate_std": 0.357
+      }
+    ]
+  }
+}
