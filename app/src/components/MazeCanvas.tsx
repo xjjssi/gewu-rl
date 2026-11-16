@@ -98,7 +98,7 @@ export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editabl
                 editable && "cursor-crosshair",
               )}
               style={
-                showHeatmap && p
+                showHeatmap && p && cell !== Cell.GOAL
                   ? { backgroundColor: heatColor(p.q_max, qMin, qMax) }
                   : undefined
               }
