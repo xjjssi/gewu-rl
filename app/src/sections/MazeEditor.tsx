@@ -20,12 +20,12 @@ import { Cell, type MazeGrid, type Preset } from "@/types"
 type Brush = number // Cell 值或 -1（擦除）
 
 const BRUSHES: { id: Brush; label: string; icon: React.ReactNode; cls: string }[] = [
-  { id: Cell.WALL, label: "墙", icon: <Square className="h-4 w-4" />, cls: "data-[on=true]:bg-slate-500" },
+  { id: Cell.WALL, label: "墙", icon: <Square className="h-4 w-4" />, cls: "data-[on=true]:bg-slate-600 data-[on=true]:text-white" },
   { id: Cell.BONUS, label: "奖励格", icon: <Gem className="h-4 w-4" />, cls: "data-[on=true]:bg-amber-400 data-[on=true]:text-amber-950" },
-  { id: Cell.TRAP, label: "陷阱格", icon: <Skull className="h-4 w-4" />, cls: "data-[on=true]:bg-rose-600" },
-  { id: Cell.START, label: "起点", icon: <Flag className="h-4 w-4" />, cls: "data-[on=true]:bg-sky-500" },
-  { id: Cell.GOAL, label: "终点", icon: <Flag className="h-4 w-4 rotate-180" />, cls: "data-[on=true]:bg-emerald-500" },
-  { id: -1, label: "擦除", icon: <Eraser className="h-4 w-4" />, cls: "data-[on=true]:bg-slate-600" },
+  { id: Cell.TRAP, label: "陷阱格", icon: <Skull className="h-4 w-4" />, cls: "data-[on=true]:bg-rose-600 data-[on=true]:text-white" },
+  { id: Cell.START, label: "起点", icon: <Flag className="h-4 w-4" />, cls: "data-[on=true]:bg-sky-600 data-[on=true]:text-white" },
+  { id: Cell.GOAL, label: "终点", icon: <Flag className="h-4 w-4 rotate-180" />, cls: "data-[on=true]:bg-emerald-600 data-[on=true]:text-white" },
+  { id: -1, label: "擦除", icon: <Eraser className="h-4 w-4" />, cls: "data-[on=true]:bg-white data-[on=true]:ring-2 data-[on=true]:ring-brand" },
 ]
 
 const SIZES = [6, 8, 10, 12]
@@ -112,9 +112,9 @@ export default function MazeEditor({ grid, onChange }: Props) {
   }
 
   return (
-    <Card className="border-slate-700 bg-slate-900/60">
+    <Card className="border-slate-200 bg-white">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base text-slate-100">迷宫编辑器</CardTitle>
+        <CardTitle className="text-base text-slate-900">迷宫编辑器</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -125,7 +125,7 @@ export default function MazeEditor({ grid, onChange }: Props) {
               variant="outline"
               data-on={brush === b.id}
               onClick={() => setBrush(b.id)}
-              className={cn("border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700", b.cls)}
+              className={cn("border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200", b.cls)}
             >
               {b.icon}
               {b.label}
@@ -135,12 +135,12 @@ export default function MazeEditor({ grid, onChange }: Props) {
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label className="text-xs text-slate-400">网格尺寸</Label>
+            <Label className="text-xs text-slate-500">网格尺寸</Label>
             <Select
               value={String(grid.length)}
               onValueChange={(v) => onChange(resizeGrid(grid, Number(v)))}
             >
-              <SelectTrigger className="w-24 border-slate-600 bg-slate-800">
+              <SelectTrigger className="w-24 border-slate-300 bg-slate-100">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -151,7 +151,7 @@ export default function MazeEditor({ grid, onChange }: Props) {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-slate-400">预设迷宫</Label>
+            <Label className="text-xs text-slate-500">预设迷宫</Label>
             <Select key={presetNonce} onValueChange={(id) => {
               const p = presets.find((x) => x.id === id)
               if (p) {
@@ -159,7 +159,7 @@ export default function MazeEditor({ grid, onChange }: Props) {
                 setPresetNonce((n) => n + 1) // 重置为空占位，允许再次选择同一预设
               }
             }}>
-              <SelectTrigger className="w-36 border-slate-600 bg-slate-800">
+              <SelectTrigger className="w-36 border-slate-300 bg-slate-100">
                 <SelectValue placeholder="加载预设…" />
               </SelectTrigger>
               <SelectContent>
@@ -169,16 +169,16 @@ export default function MazeEditor({ grid, onChange }: Props) {
               </SelectContent>
             </Select>
             {presetsError && (
-              <p className="text-xs text-rose-400">
+              <p className="text-xs text-rose-600">
                 预设加载失败，请先启动后端（uvicorn main:app --port 8000）
               </p>
             )}
           </div>
-          <Button size="sm" variant="outline" className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+          <Button size="sm" variant="outline" className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
             onClick={() => onChange(randomGrid(grid.length))}>
             <Dices className="h-4 w-4" /> 随机迷宫
           </Button>
-          <Button size="sm" variant="outline" className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+          <Button size="sm" variant="outline" className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
             onClick={() => onChange(blankGrid(grid.length))}>
             <Trash2 className="h-4 w-4" /> 清空
           </Button>
@@ -186,7 +186,7 @@ export default function MazeEditor({ grid, onChange }: Props) {
 
         <MazeCanvas grid={grid} editable onCell={paint} />
 
-        <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
           {CELL_LEGEND.map((l) => (
             <span key={l.label} className="flex items-center gap-1">
               <span className={cn("inline-block h-3 w-3 rounded-sm", l.cls)} /> {l.label}

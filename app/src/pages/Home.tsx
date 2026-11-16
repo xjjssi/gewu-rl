@@ -54,12 +54,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/70 px-6 py-4">
+    <div className="min-h-screen bg-paper text-slate-900">
+      <header className="border-t-[3px] border-b border-t-brand border-b-slate-200 bg-white px-6 py-3.5">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
-          <GraduationCap className="h-6 w-6 text-cyan-400" />
-          <h1 className="text-xl font-bold tracking-wide">
-            格物RL <span className="text-sm font-normal text-slate-400">· 可视化强化学习教学实验平台</span>
+          <GraduationCap className="h-6 w-6 text-brand" />
+          <h1 className="text-xl font-semibold text-ink">
+            格物RL <span className="text-sm font-normal text-slate-500">· 可视化强化学习教学实验平台</span>
           </h1>
         </div>
       </header>
@@ -77,16 +77,17 @@ export default function Home() {
 
         <section>
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="border border-slate-700 bg-slate-900">
+            <TabsList className="border border-slate-200 bg-slate-100 [&>button[data-state=active]]:text-ink">
               <TabsTrigger value="editor">环境搭建</TabsTrigger>
               <TabsTrigger value="designer">AI 奖励设计师</TabsTrigger>
               <TabsTrigger value="live">训练实时视图</TabsTrigger>
               <TabsTrigger value="compare">实验对比</TabsTrigger>
             </TabsList>
+            {/* forceMount：切换标签页时保留各页状态（意图实验结果、回放进度、已勾选曲线），录屏演示时不丢失 */}
             <TabsContent value="editor" className="mt-4">
               <MazeEditor grid={grid} onChange={setGrid} />
             </TabsContent>
-            <TabsContent value="designer" className="mt-4">
+            <TabsContent value="designer" forceMount className="mt-4 data-[state=inactive]:hidden">
               <RewardDesigner
                 grid={grid}
                 onApplyReward={(reward: RewardConfigForm) => setConfig((c) => ({ ...c, reward }))}
@@ -94,10 +95,10 @@ export default function Home() {
                 onLoadMaze={setGrid}
               />
             </TabsContent>
-            <TabsContent value="live" className="mt-4">
+            <TabsContent value="live" forceMount className="mt-4 data-[state=inactive]:hidden">
               <LiveView grid={grid} training={state} />
             </TabsContent>
-            <TabsContent value="compare" className="mt-4">
+            <TabsContent value="compare" forceMount className="mt-4 data-[state=inactive]:hidden">
               <CompareView active={tab === "compare"} />
             </TabsContent>
           </Tabs>

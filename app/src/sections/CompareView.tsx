@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table"
 import type { CurriculumResult, RunDetail, RunMeta } from "@/types"
 
-const COLORS = ["#38bdf8", "#34d399", "#f472b6", "#fbbf24", "#a78bfa", "#fb7185"]
+const COLORS = ["#0877bd", "#2e8b57", "#f59322", "#d1495b", "#e8590c", "#6a4c93"]
 
 function movingAvg(xs: number[], w: number): number[] {
   const out: number[] = []
@@ -147,23 +147,23 @@ export default function CompareView({ active = true }: { active?: boolean }) {
 
   return (
     <div className="space-y-4">
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-base text-slate-100">历史实验（勾选 2 条以上叠加对比）</CardTitle>
-          <Button size="sm" variant="outline" className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700" onClick={refresh}>
+          <CardTitle className="text-base text-slate-900">历史实验（勾选 2 条以上叠加对比）</CardTitle>
+          <Button size="sm" variant="outline" className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200" onClick={refresh}>
             <RefreshCw className="h-4 w-4" /> 刷新
           </Button>
         </CardHeader>
         <CardContent>
           {loadError ? (
-            <p className="text-sm text-rose-400">{loadError}</p>
+            <p className="text-sm text-rose-600">{loadError}</p>
           ) : runs.length === 0 ? (
-            <p className="text-sm text-slate-400">暂无历史实验，请先在「训练实时视图」完成一次训练。</p>
+            <p className="text-sm text-slate-500">暂无历史实验，请先在「训练实时视图」完成一次训练。</p>
           ) : (
             <>
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700">
+                  <TableRow className="border-slate-200">
                     <TableHead className="w-10"></TableHead>
                     <TableHead>时间</TableHead>
                     <TableHead>算法</TableHead>
@@ -176,7 +176,7 @@ export default function CompareView({ active = true }: { active?: boolean }) {
                 </TableHeader>
                 <TableBody>
                   {pageRuns.map((r) => (
-                    <TableRow key={r.id} className="border-slate-700">
+                    <TableRow key={r.id} className="border-slate-200">
                       <TableCell>
                         <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
                       </TableCell>
@@ -196,15 +196,15 @@ export default function CompareView({ active = true }: { active?: boolean }) {
                 </TableBody>
               </Table>
               {totalPages > 1 && (
-                <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-400">
+                <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-500">
                   <Button size="sm" variant="outline" disabled={page === 0}
-                    className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
                     onClick={() => setPage((p) => Math.max(0, p - 1))}>
                     上一页
                   </Button>
                   <span>第 {page + 1} / {totalPages} 页（共 {runs.length} 条）</span>
                   <Button size="sm" variant="outline" disabled={page >= totalPages - 1}
-                    className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
                     onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
                     下一页
                   </Button>
@@ -216,14 +216,14 @@ export default function CompareView({ active = true }: { active?: boolean }) {
       </Card>
 
       {overlaySeries.length > 0 && (
-        <Card className="border-slate-700 bg-slate-900/60">
+        <Card className="border-slate-200 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-slate-100">回报曲线叠加（20 回合滑动平均）</CardTitle>
+            <CardTitle className="text-base text-slate-900">回报曲线叠加（20 回合滑动平均）</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={overlayConfig} className="h-64 w-full">
               <LineChart data={overlayData} margin={{ left: 8, right: 8, top: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="episode" stroke="#64748b" fontSize={11} />
                 <YAxis stroke="#64748b" fontSize={11} width={50} />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -238,16 +238,16 @@ export default function CompareView({ active = true }: { active?: boolean }) {
         </Card>
       )}
 
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base text-slate-100">课程学习对照</CardTitle>
-          <Button size="sm" className="bg-violet-600 hover:bg-violet-500" onClick={runCurriculum} disabled={busy}>
+          <CardTitle className="text-base text-slate-900">课程学习对照</CardTitle>
+          <Button size="sm" className="bg-orange-600 hover:bg-orange-700" onClick={runCurriculum} disabled={busy}>
             <FlaskConical className="h-4 w-4" /> {busy ? "运行中…" : "运行课程学习对照"}
           </Button>
         </CardHeader>
         <CardContent>
           {!curriculum ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               点击按钮后，后端将按「逆向课程」逐级训练表格 Q-Learning：同一张大迷宫，
               起点由近及远（终点隔壁 → 中场 → 中远程 → 全程），Q 表逐级迁移，
               并与「直接在全程起点训练同等总回合数」对照。
@@ -255,29 +255,29 @@ export default function CompareView({ active = true }: { active?: boolean }) {
           ) : (
             <div className="space-y-3">
               {/* 两组最终评估成功率（贪心策略在最终迷宫上各评 20 回合） */}
-              <div className="flex flex-wrap gap-4 rounded-md border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm">
-                <span className="text-slate-300">
+              <div className="flex flex-wrap gap-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm">
+                <span className="text-slate-700">
                   课程学习 评估成功率：
-                  <span className="font-mono font-bold text-violet-300">
+                  <span className="font-mono font-bold text-orange-700">
                     {(curriculum.eval.curriculum_success * 100).toFixed(0)}%
                   </span>
                 </span>
-                <span className="text-slate-300">
+                <span className="text-slate-700">
                   直接训练 评估成功率：
-                  <span className="font-mono font-bold text-slate-100">
+                  <span className="font-mono font-bold text-slate-900">
                     {(curriculum.eval.baseline_success * 100).toFixed(0)}%
                   </span>
                 </span>
               </div>
               <ChartContainer
                 config={{
-                  curriculum: { label: "课程学习（逐级）", color: "#a78bfa" },
+                  curriculum: { label: "课程学习（逐级）", color: "#e8590c" },
                   baseline: { label: curriculum.baseline.name, color: "#64748b" },
                 } satisfies ChartConfig}
                 className="h-64 w-full"
               >
                 <LineChart data={curriculumData} margin={{ left: 8, right: 8, top: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="episode" stroke="#64748b" fontSize={11} />
                   <YAxis stroke="#64748b" fontSize={11} width={50} />
                   <ChartTooltip content={<ChartTooltipContent />} />

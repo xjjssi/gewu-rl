@@ -67,7 +67,7 @@ export const DEFAULT_CONFIG: TrainConfig = {
 }
 
 const STATUS_BADGE: Record<TrainStatus, { label: string; cls: string }> = {
-  idle: { label: "待命", cls: "bg-slate-600" },
+  idle: { label: "待命", cls: "bg-slate-500" },
   running: { label: "训练中", cls: "bg-emerald-600 animate-pulse" },
   done: { label: "已完成", cls: "bg-sky-600" },
   stopped: { label: "已停止", cls: "bg-amber-600" },
@@ -87,13 +87,13 @@ function NumField({ label, value, onChange, step = 0.01 }: {
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-400">{label}</Label>
+      <Label className="text-xs text-slate-500">{label}</Label>
       <Input
         type="number"
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-8 border-slate-600 bg-slate-800 text-slate-100"
+        className="h-8 border-slate-300 bg-slate-100 text-slate-900"
       />
     </div>
   )
@@ -122,16 +122,16 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
 
   return (
     <div className="space-y-4">
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-base text-slate-100">训练控制台</CardTitle>
+          <CardTitle className="text-base text-slate-900">训练控制台</CardTitle>
           <Badge className={STATUS_BADGE[status].cls}>{STATUS_BADGE[status].label}</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <Label className="text-xs text-slate-400">算法</Label>
+            <Label className="text-xs text-slate-500">算法</Label>
             <Select value={algo} onValueChange={(v) => switchAlgo(v as Algo)} disabled={running}>
-              <SelectTrigger className="border-slate-600 bg-slate-800">
+              <SelectTrigger className="border-slate-300 bg-slate-100">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,19 +172,19 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
             onChange={(v) => onChange({ ...config, seed: Math.trunc(v) })} />
 
           <div className="flex gap-2 pt-1">
-            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-500" onClick={onStart} disabled={running}>
+            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={onStart} disabled={running}>
               <Play className="h-4 w-4" /> 开始训练
             </Button>
-            <Button className="flex-1" variant="destructive" onClick={onStop} disabled={!running}>
+            <Button className="flex-1 border-rose-300 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700" variant="outline" onClick={onStop} disabled={!running}>
               <Square className="h-4 w-4" /> 停止
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-slate-100">奖励塑形</CardTitle>
+          <CardTitle className="text-base text-slate-900">奖励塑形</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <NumField label="每步代价" value={reward.step_penalty} onChange={(v) => setReward("step_penalty", v)} />
@@ -192,13 +192,13 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
           <NumField label="终点奖励" value={reward.goal_reward} onChange={(v) => setReward("goal_reward", v)} />
           <NumField label="奖励格" value={reward.bonus_reward} onChange={(v) => setReward("bonus_reward", v)} />
           <NumField label="陷阱惩罚" value={reward.trap_penalty} onChange={(v) => setReward("trap_penalty", v)} />
-          <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2">
-            <Label className="text-xs text-slate-300">势函数塑形（PBRS，最优策略不变）</Label>
+          <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+            <Label className="text-xs text-slate-700">势函数塑形（PBRS，最优策略不变）</Label>
             <Switch checked={reward.potential_shaping}
               onCheckedChange={(v) => setReward("potential_shaping", v)} disabled={running} />
           </div>
-          <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2">
-            <Label className="text-xs text-slate-300">陷阱终止回合</Label>
+          <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+            <Label className="text-xs text-slate-700">陷阱终止回合</Label>
             <Switch checked={reward.trap_terminal}
               onCheckedChange={(v) => setReward("trap_terminal", v)} disabled={running} />
           </div>
@@ -214,7 +214,7 @@ function SliderRow({ label, value, min, max, step, onChange, disabled }: {
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-400">{label}</Label>
+      <Label className="text-xs text-slate-500">{label}</Label>
       <Slider min={min} max={max} step={step} value={[value]} disabled={disabled}
         onValueChange={([v]) => onChange(v)} />
     </div>
@@ -229,7 +229,7 @@ function LogSliderRow({ label, value, minExp, maxExp, onChange, disabled }: {
   const exp = Math.min(maxExp, Math.max(minExp, Math.log10(value)))
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-400">{label}</Label>
+      <Label className="text-xs text-slate-500">{label}</Label>
       <Slider min={minExp} max={maxExp} step={0.05} value={[exp]} disabled={disabled}
         onValueChange={([e]) => onChange(Number(Math.pow(10, e).toPrecision(2)))} />
     </div>

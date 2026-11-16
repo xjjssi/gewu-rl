@@ -787,7 +787,9 @@ def _train_eval_group(
             hyper = {"total_timesteps": min(15_000, max(5_000, episodes * 50))}
         treq = TrainRequest(maze=req.maze, algo=req.algo, hyperparams=hyper,
                             reward_config=rc, seed=seed, label=label)
-        session = TrainSession(f"int{tag}_{uuid.uuid4().hex[:6]}", treq)
+        # 随机串放在最前：_save_run 只取 session_id 前 6 位作目录名，若以 "int{tag}" 开头，
+        # default 与 default_pbrs 会同名（"intdef"），同一秒内的多个种子互相覆盖
+        session = TrainSession(f"{uuid.uuid4().hex[:6]}_int{tag}", treq)
         summary, agent = _train_sync(session)
         run_dir = _save_run(session, summary)
         ids.append(run_dir.name)

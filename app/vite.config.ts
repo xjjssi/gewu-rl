@@ -10,11 +10,11 @@ export default defineConfig({
     port: 3000, // 可被 CLI --port 覆盖（未启用 strictPort，冲突时自动换端口）
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
       "/ws": {
-        target: "ws://localhost:8000",
+        target: "ws://127.0.0.1:8000",
         ws: true,
       },
     },

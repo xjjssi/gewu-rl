@@ -219,14 +219,14 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
 
   return (
     <div className="space-y-4">
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base text-slate-100">
-            <Wand2 className="h-4 w-4 text-violet-400" /> AI 奖励设计师
+          <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+            <Wand2 className="h-4 w-4 text-orange-600" /> AI 奖励设计师
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs leading-relaxed text-slate-400">
+          <p className="text-xs leading-relaxed text-slate-500">
             用中文描述教学目标，系统自动设计奖励函数，并运行三组对照实验验证意图是否达成：
             意图 → 奖励配置 →「默认方案 / 默认+PBRS / AI 方案」三组训练（多种子取均值±标准差）→ 行为指标对比。
             AI 的价值体现在第三组相对第二组的增量，而不是「PBRS 开 vs 关」。
@@ -236,27 +236,27 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             placeholder="例如：让智能体学会绕开陷阱，宁愿绕远路也不冒险……"
-            className="min-h-20 border-slate-600 bg-slate-800 text-slate-100"
+            className="min-h-20 border-slate-300 bg-slate-100 text-slate-900"
           />
           <div className="flex flex-wrap gap-2">
             {EXAMPLES.map((ex) => (
               <Button key={ex.text} size="sm" variant="outline"
-                className="border-slate-600 bg-slate-800/60 text-xs text-slate-300 hover:bg-slate-700"
+                className="border-slate-300 bg-slate-50 text-xs text-slate-700 hover:bg-slate-200"
                 onClick={() => pickExample(ex)}>
                 {ex.text}
               </Button>
             ))}
           </div>
-          {exampleNote && <p className="text-xs text-cyan-400">{exampleNote}</p>}
+          {exampleNote && <p className="text-xs text-brand">{exampleNote}</p>}
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label className="text-xs text-slate-400">训练算法</Label>
+              <Label className="text-xs text-slate-500">训练算法</Label>
               <div className="flex gap-1">
                 {(["qlearning", "ppo", "dqn"] as Algo[]).map((a) => (
                   <Button key={a} size="sm" variant="outline"
-                    className={cn("h-8 border-slate-600 text-xs",
-                      algo === a ? "bg-cyan-700 text-slate-100 hover:bg-cyan-600" : "bg-slate-800/60 text-slate-400 hover:bg-slate-700")}
+                    className={cn("h-8 border-slate-300 text-xs",
+                      algo === a ? "bg-brand text-slate-900 hover:bg-brand-dark" : "bg-slate-50 text-slate-500 hover:bg-slate-200")}
                     onClick={() => setAlgo(a)}>
                     {a === "qlearning" ? "Q-Learning" : a.toUpperCase()}
                   </Button>
@@ -264,84 +264,84 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-slate-400">每组回合数</Label>
+              <Label className="text-xs text-slate-500">每组回合数</Label>
               <Input type="number" min={20} max={2000} value={episodes}
                 onChange={(e) => setEpisodes(Math.max(20, Math.min(2000, Number(e.target.value) || 200)))}
-                className="h-8 w-24 border-slate-600 bg-slate-800 text-slate-100" />
+                className="h-8 w-24 border-slate-300 bg-slate-100 text-slate-900" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-slate-400">种子数（均值±标准差）</Label>
+              <Label className="text-xs text-slate-500">种子数（均值±标准差）</Label>
               <Input type="number" min={1} max={8} value={nSeeds}
                 onChange={(e) => setNSeeds(Math.max(1, Math.min(8, Number(e.target.value) || 5)))}
-                className="h-8 w-24 border-slate-600 bg-slate-800 text-slate-100" />
+                className="h-8 w-24 border-slate-300 bg-slate-100 text-slate-900" />
             </div>
           </div>
           {slowAlgoWarning && (
-            <p className="flex items-start gap-1.5 rounded-md border border-amber-700/60 bg-amber-900/20 p-2 text-xs leading-relaxed text-amber-300">
+            <p className="flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs leading-relaxed text-amber-800">
               <Timer className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {slowAlgoWarning}
             </p>
           )}
 
           <button
             onClick={() => setShowLlm(!showLlm)}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900"
           >
             <KeyRound className="h-3 w-3" /> LLM 设置 {showLlm ? "▲" : "▼"}
             {!llm.api_key && <span className="text-slate-500">（未配置 LLM，将使用内置规则引擎）</span>}
           </button>
           {showLlm && (
-            <div className="grid gap-3 rounded-md border border-slate-700 bg-slate-800/60 p-3 sm:grid-cols-3">
+            <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Base URL</Label>
+                <Label className="text-xs text-slate-500">Base URL</Label>
                 <Input value={llm.base_url} onChange={(e) => setLlm({ ...llm, base_url: e.target.value })}
-                  className="h-8 border-slate-600 bg-slate-800 text-slate-100" />
+                  className="h-8 border-slate-300 bg-slate-100 text-slate-900" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">API Key</Label>
+                <Label className="text-xs text-slate-500">API Key</Label>
                 <Input type="password" value={llm.api_key} placeholder="仅本次请求使用，不会保存"
                   onChange={(e) => setLlm({ ...llm, api_key: e.target.value })}
-                  className="h-8 border-slate-600 bg-slate-800 text-slate-100" />
+                  className="h-8 border-slate-300 bg-slate-100 text-slate-900" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">模型</Label>
+                <Label className="text-xs text-slate-500">模型</Label>
                 <Input value={llm.model} onChange={(e) => setLlm({ ...llm, model: e.target.value })}
-                  className="h-8 border-slate-600 bg-slate-800 text-slate-100" />
+                  className="h-8 border-slate-300 bg-slate-100 text-slate-900" />
               </div>
             </div>
           )}
 
           <div className="flex gap-2">
             <Button onClick={runDesign} disabled={!instruction.trim() || busy !== null}
-              className="flex-1 bg-violet-600 hover:bg-violet-500">
+              className="flex-1 bg-orange-600 hover:bg-orange-700">
               {busy === "design" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               生成奖励方案
             </Button>
             <Button onClick={runExperiment} disabled={!instruction.trim() || busy !== null}
-              className="flex-1 bg-cyan-600 hover:bg-cyan-500">
+              className="flex-1 bg-brand hover:bg-brand-dark">
               {busy === "experiment" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
               {busy === "experiment"
                 ? `三组对照实验运行中（${nSeeds} 种子 × 3 组${algo !== "qlearning" ? `，${algo.toUpperCase()}` : ""}）… 已等待 ${elapsed}s`
                 : "运行意图验证实验"}
             </Button>
           </div>
-          {error && <p className="text-sm text-rose-400">{error}</p>}
+          {error && <p className="text-sm text-rose-600">{error}</p>}
         </CardContent>
       </Card>
 
       {design && (
-        <Card className="border-slate-700 bg-slate-900/60">
+        <Card className="border-slate-200 bg-white">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base text-slate-100">生成的奖励方案</CardTitle>
-            <Badge className={design.source === "llm" ? "bg-violet-600" : "bg-slate-600"}>
+            <CardTitle className="text-base text-slate-900">生成的奖励方案</CardTitle>
+            <Badge className={design.source === "llm" ? "bg-orange-600" : "bg-slate-500"}>
               {design.source === "llm" ? "LLM 生成" : "规则引擎"}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {REWARD_FIELD_LABELS.map(({ key, label }) => (
-                <div key={key} className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2">
-                  <div className="text-[11px] text-slate-400">{label}</div>
-                  <div className="font-mono text-sm text-slate-100">
+                <div key={key} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="text-[11px] text-slate-500">{label}</div>
+                  <div className="font-mono text-sm text-slate-900">
                     {typeof design.reward_config[key] === "boolean"
                       ? design.reward_config[key] ? "开" : "关"
                       : design.reward_config[key]}
@@ -350,14 +350,14 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
               ))}
               <div className="flex items-center">
                 <Button size="sm" variant="outline"
-                  className={cn("border-slate-600 text-slate-200",
-                    applied ? "bg-emerald-700 hover:bg-emerald-700" : "bg-slate-800 hover:bg-slate-700")}
+                  className={cn("border-slate-300 text-slate-800",
+                    applied ? "bg-emerald-700 hover:bg-emerald-700" : "bg-slate-100 hover:bg-slate-200")}
                   onClick={() => { onApplyReward(design.reward_config); setApplied(true) }}>
                   <Check className="h-4 w-4" /> {applied ? "已应用到控制台" : "应用此方案"}
                 </Button>
               </div>
             </div>
-            <p className="whitespace-pre-line rounded-md border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
+            <p className="whitespace-pre-line rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
               {design.explanation}
             </p>
           </CardContent>
@@ -365,9 +365,9 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
       )}
 
       {experiment && (
-        <Card className="border-slate-700 bg-slate-900/60">
+        <Card className="border-slate-200 bg-white">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base text-slate-100">
+            <CardTitle className="text-base text-slate-900">
               意图达成度验证（{experiment.n_seeds} 个种子的均值±标准差，每种子统一口径评估 20 回合：ε=0.05 + 平局偏向终点 + 环路检测）
             </CardTitle>
             <span className="text-xs text-slate-500">耗时 {experiment.elapsed_sec}s</span>
@@ -375,11 +375,11 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
           <CardContent className="space-y-3">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-700">
+                <TableRow className="border-slate-200">
                   <TableHead>行为指标</TableHead>
                   {groups.map((g) => (
                     <TableHead key={g.key}
-                      className={g.key === "ai" ? "text-violet-300" : g.key === "default_pbrs" ? "text-cyan-300" : "text-slate-400"}>
+                      className={g.key === "ai" ? "text-orange-700" : g.key === "default_pbrs" ? "text-brand" : "text-slate-500"}>
                       {g.label}
                     </TableHead>
                   ))}
@@ -395,13 +395,13 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
                   // AI 列相对默认方案差异超阈值时高亮
                   const changed = va !== null && vb !== null && Math.abs(va - vb) > th
                   return (
-                    <TableRow key={key} className="border-slate-700">
-                      <TableCell className="text-slate-300">{label}</TableCell>
+                    <TableRow key={key} className="border-slate-200">
+                      <TableCell className="text-slate-700">{label}</TableCell>
                       {groups.map((g) => (
                         <TableCell key={g.key}
                           className={cn("font-mono",
-                            g.key === "ai" && changed && "font-bold text-cyan-300",
-                            g.key !== "ai" && "text-slate-400")}>
+                            g.key === "ai" && changed && "font-bold text-brand",
+                            g.key !== "ai" && "text-slate-500")}>
                           {fmtCell(key, g.metrics, pct)}
                         </TableCell>
                       ))}
@@ -413,21 +413,21 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
             <p className="text-xs text-slate-500">
               「默认+PBRS」列用于剥离势函数塑形的贡献：AI 方案的价值 = AI 列相对该列的增量。
             </p>
-            <p className="whitespace-pre-line rounded-md border border-slate-700 bg-slate-800/40 p-3 text-sm leading-relaxed text-slate-300">
+            <p className="whitespace-pre-line rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
               {experiment.interpretation}
             </p>
             {experiment.iterations && experiment.iterations.length > 1 && (
-              <div className="space-y-2 rounded-md border border-violet-700/60 bg-violet-900/10 p-3">
-                <p className="text-xs font-medium text-violet-300">
+              <div className="space-y-2 rounded-md border border-orange-200 bg-orange-50 p-3">
+                <p className="text-xs font-medium text-orange-700">
                   闭环迭代修正（LLM 根据训练指标反馈调整奖励配置，共 {experiment.iterations.length} 轮）
                 </p>
                 {experiment.iterations.map((it) => (
-                  <div key={it.round} className="rounded-md border border-slate-700 bg-slate-800/60 p-2 text-xs">
+                  <div key={it.round} className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <Badge className={it.round === 0 ? "bg-slate-600" : "bg-violet-600"}>
+                      <Badge className={it.round === 0 ? "bg-slate-500" : "bg-orange-600"}>
                         {it.round === 0 ? "首轮设计" : `第 ${it.round} 轮修正`}
                       </Badge>
-                      <span className="font-mono text-slate-400">
+                      <span className="font-mono text-slate-500">
                         成功率 {(it.metrics.success_rate * 100).toFixed(0)}% · 平均步数 {it.metrics.avg_steps.toFixed(0)}
                         · 踩陷率 {(it.metrics.trap_trigger_rate * 100).toFixed(0)}%
                       </span>
@@ -436,14 +436,14 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
                         / goal {it.reward_config.goal_reward} / 塑形{it.reward_config.potential_shaping ? "开" : "关"}
                       </span>
                     </div>
-                    {it.note && <p className="whitespace-pre-line leading-relaxed text-slate-300">{it.note}</p>}
-                    {it.judgement && <p className="leading-relaxed text-emerald-300">✅ {it.judgement}</p>}
+                    {it.note && <p className="whitespace-pre-line leading-relaxed text-slate-700">{it.note}</p>}
+                    {it.judgement && <p className="leading-relaxed text-emerald-700">✅ {it.judgement}</p>}
                   </div>
                 ))}
               </div>
             )}
             <Button size="sm" variant="outline" onClick={onGoCompare}
-              className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700">
+              className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200">
               到「实验对比」查看各组训练曲线 →
             </Button>
 

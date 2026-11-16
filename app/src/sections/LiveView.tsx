@@ -21,8 +21,8 @@ import type { MazeGrid } from "@/types"
 import type { TrainingState } from "@/hooks/useTrainingSocket"
 
 const chartConfig = {
-  reward: { label: "回合回报", color: "#38bdf8" },
-  success: { label: "成功率(滑动)", color: "#34d399" },
+  reward: { label: "回合回报", color: "#0877bd" },
+  success: { label: "成功率(滑动)", color: "#2e8b57" },
 } satisfies ChartConfig
 
 const SPEEDS = [1, 2, 4] as const
@@ -130,9 +130,9 @@ export default function LiveView({ grid, training }: Props) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="border-slate-700 bg-slate-900/60">
+      <Card className="border-slate-200 bg-white">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-slate-100">
+          <CardTitle className="text-base text-slate-900">
             {replay ? "训练回放" : "迷宫实时动画"}
           </CardTitle>
         </CardHeader>
@@ -146,10 +146,10 @@ export default function LiveView({ grid, training }: Props) {
           />
 
           {replay && curTraj && (
-            <div className="space-y-2 rounded-md border border-slate-700 bg-slate-800/60 p-3">
+            <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline"
-                  className="border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                  className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
                   onClick={() => {
                     if (!playing && stepIdx >= curTraj.cells.length - 1) setStepIdx(0) // 播完后点播放=重播
                     setPlaying(!playing)
@@ -160,26 +160,26 @@ export default function LiveView({ grid, training }: Props) {
                 <div className="flex gap-1">
                   {SPEEDS.map((s) => (
                     <Button key={s} size="sm" variant="outline"
-                      className={cn("border-slate-600 px-2 text-xs",
-                        speed === s ? "bg-cyan-700 text-white hover:bg-cyan-600" : "bg-slate-800 text-slate-300 hover:bg-slate-700")}
+                      className={cn("border-slate-300 px-2 text-xs",
+                        speed === s ? "bg-brand text-white hover:bg-brand-dark" : "bg-slate-100 text-slate-700 hover:bg-slate-200")}
                       onClick={() => setSpeed(s)}>
                       {s}×
                     </Button>
                   ))}
                 </div>
-                <span className="ml-auto text-xs text-slate-400">
+                <span className="ml-auto text-xs text-slate-500">
                   {curTraj.episode === -1 ? "最终贪心评估" : `第 ${curTraj.episode} 回合`}
                   {" · "}{stepIdx + 1}/{curTraj.cells.length} 步
                 </span>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">回合（共 {trajectories.length} 条代表性轨迹）</Label>
+                <Label className="text-xs text-slate-500">回合（共 {trajectories.length} 条代表性轨迹）</Label>
                 <Slider min={0} max={trajectories.length - 1} step={1}
                   value={[Math.min(trajIdx, trajectories.length - 1)]}
                   onValueChange={([i]) => selectTraj(i)} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">步数进度</Label>
+                <Label className="text-xs text-slate-500">步数进度</Label>
                 <Slider min={0} max={Math.max(0, curTraj.cells.length - 1)} step={1}
                   value={[Math.min(stepIdx, curTraj.cells.length - 1)]}
                   onValueChange={([i]) => { setStepIdx(i); setPlaying(false) }} />
@@ -190,7 +190,7 @@ export default function LiveView({ grid, training }: Props) {
           {finished && policy && (
             <div className="flex items-center gap-2">
               <Switch checked={showHeatmap} onCheckedChange={setShowHeatmap} id="heat" />
-              <Label htmlFor="heat" className="text-xs text-slate-300">
+              <Label htmlFor="heat" className="text-xs text-slate-700">
                 Q 值热力图（关闭时显示策略箭头底色）
               </Label>
             </div>
@@ -204,9 +204,9 @@ export default function LiveView({ grid, training }: Props) {
               value={summary ? `${(summary.eval_success_rate * 100).toFixed(0)}%` : avgSuccess != null ? `${(avgSuccess * 100).toFixed(0)}%*` : "—"}
             />
           </div>
-          {error && <p className="text-sm text-rose-400">{error}</p>}
+          {error && <p className="text-sm text-rose-600">{error}</p>}
           {finished && summary && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               训练{summary.stopped ? "被手动停止" : "完成"}：共 {summary.episodes_run} 回合
               {summary.elapsed_sec != null && `，耗时 ${summary.elapsed_sec}s`}，评估成功率 {(summary.eval_success_rate * 100).toFixed(0)}%
               {summary.eval_loop_rate != null && `（绕圈回合占比 ${(summary.eval_loop_rate * 100).toFixed(0)}%，ε=0.05 统一口径）`}
@@ -216,14 +216,14 @@ export default function LiveView({ grid, training }: Props) {
       </Card>
 
       <div className="space-y-4">
-        <Card className="border-slate-700 bg-slate-900/60">
+        <Card className="border-slate-200 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-slate-100">回合回报曲线（20 回合滑动平均）</CardTitle>
+            <CardTitle className="text-base text-slate-900">回合回报曲线（20 回合滑动平均）</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-56 w-full">
               <LineChart data={curveData} margin={{ left: 8, right: 8, top: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="episode" stroke="#64748b" fontSize={11} />
                 <YAxis stroke="#64748b" fontSize={11} width={50} />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -233,14 +233,14 @@ export default function LiveView({ grid, training }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700 bg-slate-900/60">
+        <Card className="border-slate-200 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-slate-100">成功率曲线（20 回合滑动平均）</CardTitle>
+            <CardTitle className="text-base text-slate-900">成功率曲线（20 回合滑动平均）</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-56 w-full">
               <LineChart data={curveData} margin={{ left: 8, right: 8, top: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="episode" stroke="#64748b" fontSize={11} />
                 <YAxis stroke="#64748b" fontSize={11} width={50} domain={[0, 1]} />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -256,9 +256,9 @@ export default function LiveView({ grid, training }: Props) {
 
 function MetricCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2">
-      <div className="text-[11px] text-slate-400">{label}</div>
-      <div className="text-lg font-semibold text-slate-100">{value}</div>
+    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+      <div className="text-[11px] text-slate-500">{label}</div>
+      <div className="text-lg font-semibold text-slate-900">{value}</div>
     </div>
   )
 }

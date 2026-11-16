@@ -5,6 +5,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // 浅色教学主题，配色参考 TensorFlow Playground
+        brand: { DEFAULT: "#0D658C", dark: "#0a4f6e" },
+        ink: "#183D4E",
+        paper: "#f6f7f9",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
