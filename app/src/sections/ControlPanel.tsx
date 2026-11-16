@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { Play, Square } from "lucide-react"
 
+import { ConceptTip } from "@/components/ConceptTip"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,6 +19,7 @@ import {
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import type { TrainStatus } from "@/hooks/useTrainingSocket"
+import type { ConceptKey } from "@/lib/concepts"
 import type { Algo, HyperParams, RewardConfigForm } from "@/types"
 
 export interface TrainConfig {
@@ -82,12 +84,12 @@ interface Props {
   onStop: () => void
 }
 
-function NumField({ label, value, onChange, step = 0.01 }: {
-  label: string; value: number; onChange: (v: number) => void; step?: number
+function NumField({ label, value, onChange, step = 0.01, tip }: {
+  label: string; value: number; onChange: (v: number) => void; step?: number; tip?: ConceptKey
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-500">{label}</Label>
+      <Label className="flex items-center gap-1 text-xs text-slate-500">{label}{tip && <ConceptTip k={tip} />}</Label>
       <Input
         type="number"
         step={step}
@@ -144,31 +146,31 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
 
           {algo === "qlearning" ? (
             <SliderRow label={`训练回合数：${hyper.episodes}`} min={100} max={2000} step={50}
-              value={hyper.episodes} onChange={(v) => setHyper("episodes", v)} disabled={running} />
+              value={hyper.episodes} onChange={(v) => setHyper("episodes", v)} disabled={running} tip="episodes" />
           ) : (
             <SliderRow label={`训练步数：${hyper.total_timesteps}`} min={5000} max={50000} step={1000}
               value={hyper.total_timesteps} onChange={(v) => setHyper("total_timesteps", v)} disabled={running} />
           )}
           {algo === "qlearning" ? (
             <SliderRow label={`学习率 α：${hyper.learning_rate}`} min={0.01} max={1} step={0.01}
-              value={hyper.learning_rate} onChange={(v) => setHyper("learning_rate", v)} disabled={running} />
+              value={hyper.learning_rate} onChange={(v) => setHyper("learning_rate", v)} disabled={running} tip="learning_rate" />
           ) : (
             // PPO/DQN 学习率量级为 1e-5 ~ 1e-2，线性滑杆无法表达，用对数刻度
             <LogSliderRow label={`学习率 α：${hyper.learning_rate.toExponential(1)}`}
               minExp={-5} maxExp={-2} value={hyper.learning_rate}
-              onChange={(v) => setHyper("learning_rate", v)} disabled={running} />
+              onChange={(v) => setHyper("learning_rate", v)} disabled={running} tip="learning_rate" />
           )}
           <SliderRow label={`折现因子 γ：${hyper.gamma}`} min={0.8} max={0.999} step={0.001}
-            value={hyper.gamma} onChange={(v) => setHyper("gamma", v)} disabled={running} />
+            value={hyper.gamma} onChange={(v) => setHyper("gamma", v)} disabled={running} tip="gamma" />
           {algo === "qlearning" && (
             <>
               <SliderRow label={`ε 初始：${hyper.epsilon_start}`} min={0.1} max={1} step={0.05}
-                value={hyper.epsilon_start} onChange={(v) => setHyper("epsilon_start", v)} disabled={running} />
+                value={hyper.epsilon_start} onChange={(v) => setHyper("epsilon_start", v)} disabled={running} tip="epsilon" />
               <SliderRow label={`ε 终止：${hyper.epsilon_end}`} min={0} max={0.5} step={0.01}
-                value={hyper.epsilon_end} onChange={(v) => setHyper("epsilon_end", v)} disabled={running} />
+                value={hyper.epsilon_end} onChange={(v) => setHyper("epsilon_end", v)} disabled={running} tip="epsilon" />
             </>
           )}
-          <NumField label="随机种子" value={config.seed} step={1}
+          <NumField label="随机种子" value={config.seed} step={1} tip="seed"
             onChange={(v) => onChange({ ...config, seed: Math.trunc(v) })} />
 
           <div className="flex gap-2 pt-1">
@@ -187,18 +189,18 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
           <CardTitle className="text-base text-slate-900">奖励塑形</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
-          <NumField label="每步代价" value={reward.step_penalty} onChange={(v) => setReward("step_penalty", v)} />
-          <NumField label="撞墙惩罚" value={reward.wall_penalty} onChange={(v) => setReward("wall_penalty", v)} />
-          <NumField label="终点奖励" value={reward.goal_reward} onChange={(v) => setReward("goal_reward", v)} />
-          <NumField label="奖励格" value={reward.bonus_reward} onChange={(v) => setReward("bonus_reward", v)} />
-          <NumField label="陷阱惩罚" value={reward.trap_penalty} onChange={(v) => setReward("trap_penalty", v)} />
+          <NumField label="每步代价" value={reward.step_penalty} onChange={(v) => setReward("step_penalty", v)} tip="step_penalty" />
+          <NumField label="撞墙惩罚" value={reward.wall_penalty} onChange={(v) => setReward("wall_penalty", v)} tip="wall_penalty" />
+          <NumField label="终点奖励" value={reward.goal_reward} onChange={(v) => setReward("goal_reward", v)} tip="goal_reward" />
+          <NumField label="奖励格" value={reward.bonus_reward} onChange={(v) => setReward("bonus_reward", v)} tip="bonus_reward" />
+          <NumField label="陷阱惩罚" value={reward.trap_penalty} onChange={(v) => setReward("trap_penalty", v)} tip="trap_penalty" />
           <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-            <Label className="text-xs text-slate-700">势函数塑形（PBRS，最优策略不变）</Label>
+            <Label className="flex items-center gap-1 text-xs text-slate-700">势函数塑形（PBRS，最优策略不变）<ConceptTip k="potential_shaping" /></Label>
             <Switch checked={reward.potential_shaping}
               onCheckedChange={(v) => setReward("potential_shaping", v)} disabled={running} />
           </div>
           <div className="col-span-2 flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-            <Label className="text-xs text-slate-700">陷阱终止回合</Label>
+            <Label className="flex items-center gap-1 text-xs text-slate-700">陷阱终止回合<ConceptTip k="trap_penalty" /></Label>
             <Switch checked={reward.trap_terminal}
               onCheckedChange={(v) => setReward("trap_terminal", v)} disabled={running} />
           </div>
@@ -208,13 +210,13 @@ export default function ControlPanel({ config, onChange, status, onStart, onStop
   )
 }
 
-function SliderRow({ label, value, min, max, step, onChange, disabled }: {
+function SliderRow({ label, value, min, max, step, onChange, disabled, tip }: {
   label: string; value: number; min: number; max: number; step: number
-  onChange: (v: number) => void; disabled?: boolean
+  onChange: (v: number) => void; disabled?: boolean; tip?: ConceptKey
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-500">{label}</Label>
+      <Label className="flex items-center gap-1 text-xs text-slate-500">{label}{tip && <ConceptTip k={tip} />}</Label>
       <Slider min={min} max={max} step={step} value={[value]} disabled={disabled}
         onValueChange={([v]) => onChange(v)} />
     </div>
@@ -222,14 +224,14 @@ function SliderRow({ label, value, min, max, step, onChange, disabled }: {
 }
 
 /** 对数刻度滑杆：滑杆位置 = 10 的指数，用于学习率这类跨数量级的超参 */
-function LogSliderRow({ label, value, minExp, maxExp, onChange, disabled }: {
+function LogSliderRow({ label, value, minExp, maxExp, onChange, disabled, tip }: {
   label: string; value: number; minExp: number; maxExp: number
-  onChange: (v: number) => void; disabled?: boolean
+  onChange: (v: number) => void; disabled?: boolean; tip?: ConceptKey
 }) {
   const exp = Math.min(maxExp, Math.max(minExp, Math.log10(value)))
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-slate-500">{label}</Label>
+      <Label className="flex items-center gap-1 text-xs text-slate-500">{label}{tip && <ConceptTip k={tip} />}</Label>
       <Slider min={minExp} max={maxExp} step={0.05} value={[exp]} disabled={disabled}
         onValueChange={([e]) => onChange(Number(Math.pow(10, e).toPrecision(2)))} />
     </div>

@@ -1,7 +1,9 @@
 // Home —— 格物RL 单页主界面：左侧控制台 + 右侧标签页（环境搭建 / 训练实时视图 / 实验对比）
 
 import { useState } from "react"
-import { GraduationCap } from "lucide-react"
+import { BookOpen, GraduationCap } from "lucide-react"
+
+import { ConceptGuide } from "@/components/ConceptGuide"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTrainingSocket } from "@/hooks/useTrainingSocket"
@@ -26,6 +28,7 @@ export default function Home() {
   const [grid, setGrid] = useState<MazeGrid>(DEFAULT_GRID)
   const [config, setConfig] = useState<TrainConfig>(DEFAULT_CONFIG)
   const [tab, setTab] = useState("editor")
+  const [showGuide, setShowGuide] = useState(false)
   const { state, start, stop } = useTrainingSocket()
 
   const handleStart = () => {
@@ -61,8 +64,21 @@ export default function Home() {
           <h1 className="text-xl font-semibold text-ink">
             格物RL <span className="text-sm font-normal text-slate-500">· 可视化强化学习教学实验平台</span>
           </h1>
+          <button
+            type="button"
+            onClick={() => setShowGuide((v) => !v)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-slate-100"
+          >
+            <BookOpen className="h-4 w-4" />
+            RL 与人类决策
+          </button>
         </div>
       </header>
+      {showGuide && (
+        <div className="mx-auto max-w-7xl px-6 pt-6">
+          <ConceptGuide onClose={() => setShowGuide(false)} />
+        </div>
+      )}
 
       <main className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[340px_1fr]">
         <aside>

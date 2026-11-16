@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
+import { ConceptTip } from "@/components/ConceptTip"
 import { DecisionCard } from "@/components/DecisionCard"
 import { MODE_STYLE, modeStats } from "@/lib/decision"
 import { MazeCanvas } from "@/components/MazeCanvas"
@@ -230,6 +231,7 @@ export default function LiveView({ grid, training }: Props) {
               <Label htmlFor="heat" className="text-xs text-slate-700">
                 Q 值热力图（关闭时显示策略箭头底色）
               </Label>
+              <ConceptTip k="heatmap" />
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
