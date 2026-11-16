@@ -88,3 +88,70 @@ def test_greedy_tie_break_is_random():
     agent.epsilon = 1.0
     explored = {agent.select_action(0) for _ in range(400)}
     assert explored == {0, 1, 2, 3}
+
+
+# ---------------------------------------------------------------------------
+# 决策解说（方案一）：开启解说不得改变训练轨迹；解说字段须与 ε-greedy 理论一致
+# ---------------------------------------------------------------------------
+
+def _train(explained: bool, episodes: int = 60, seed: int = 3):
+    env = GridMazeEnv(PRESETS["empty_6x6"]["grid"], RewardConfig())
+    env.set_shaping_gamma(0.99)
+    agent = QLearningAgent(env.n_states, seed=seed, epsilon_decay_episodes=40)
+    actions = []
+    for _ in range(episodes):
+        _, info = env.reset()
+        s = info["state_index"]
+        done = False
+        while not done:
+            a = agent.select_action_explained(s)[0] if explained else agent.select_action(s)
+            actions.append(a)
+            _, r, terminated, truncated, info = env.step(a)
+            agent.update(s, a, r, info["state_index"], terminated, truncated)
+            s = info["state_index"]
+            done = terminated or truncated
+        agent.decay_epsilon()
+    return actions, agent.q_table
+
+
+def test_explained_selection_reproduces_plain_training():
+    """解说版选动作与普通版随机数序列一致：动作序列和最终 Q 表逐位相同。"""
+    a1, q1 = _train(False)
+    a2, q2 = _train(True)
+    assert a1 == a2
+    assert np.array_equal(q1, q2)
+
+
+def test_explained_selection_fields_match_epsilon_greedy():
+    agent = QLearningAgent(n_states=1, seed=0, epsilon_start=0.4)
+    agent.q_table[0] = [0.0, 1.0, 1.0, -1.0]  # 动作 1、2 并列最优
+    for _ in range(300):
+        a, why = agent.select_action_explained(0)
+        assert why["explore"] == (why["u"] < why["epsilon"])
+        assert why["best"] == [1, 2]
+        expected = 0.4 / 4 + (0.6 / 2 if a in (1, 2) else 0.0)
+        assert why["prob"] == pytest.approx(expected)
+        if not why["explore"]:
+            assert a in (1, 2)  # 寻优只会从 Q 最大的动作里选
+
+
+def test_api_trajectory_carries_decisions():
+    """训练接口推送的轨迹事件附带逐步决策解说，且与轨迹步数对齐。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    import main
+
+    req = main.TrainRequest(maze=PRESETS["empty_6x6"]["grid"], algo="qlearning",
+                            hyperparams={"episodes": 30}, seed=0)
+    session = main.TrainSession("t-decisions", req)
+    main.run_qlearning(session)
+    trajs = [e for e in session.buffer if e["type"] == "trajectory"]
+    assert trajs
+    for t in trajs:
+        d = t["decisions"]
+        assert len(d) == len(t["cells"]) - 1
+        for rec in d:
+            assert rec["x"] in (0, 1)
+            # TD 更新公式自洽：q1 = q0 + α·(tt − q0)
+            assert rec["q1"] == pytest.approx(rec["q0"] + rec["al"] * (rec["tt"] - rec["q0"]), abs=2e-4)

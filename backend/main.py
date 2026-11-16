@@ -166,21 +166,56 @@ def _run_one_episode_qlearning(env: GridMazeEnv, agent: QLearningAgent, collect:
     s = info["state_index"]
     total, steps, success = 0.0, 0, False
     cells = [[env.start_pos[0], env.start_pos[1]]]
+    decisions: list[dict] = []  # 与 cells[1:] 一一对应：第 i 条决策把智能体从 cells[i] 带到 cells[i+1]
     done = False
     while not done:
-        a = agent.select_action(s)
+        if collect:
+            # 采集回合：记录"决策解说"（探索/寻优、骰子、Q 值、概率），随机数序列与普通选动作一致
+            a, why = agent.select_action_explained(s)
+        else:
+            a = agent.select_action(s)
         obs, r, terminated, truncated, info = env.step(a)
         ns = info["state_index"]
+        if collect:
+            q_old = float(agent.q_table[s, a])
+            alpha = float(agent.lr)
+            next_max = 0.0 if terminated else float(agent.q_table[ns].max())
         agent.update(s, a, r, ns, terminated, truncated)
         total += r
         steps += 1
-        s = ns
-        done = terminated or truncated
         if collect:
             cells.append(list(info["pos"]))
+            td_target = r + agent.gamma * next_max  # 终止时 next_max=0，TD 目标即 r
+            decisions.append(_decision_record(a, why, r, q_old, float(agent.q_table[s, a]),
+                                              alpha, next_max, td_target, terminated))
+        s = ns
+        done = terminated or truncated
         success = info["is_success"]
     agent.decay_epsilon()
-    return total, steps, success, cells
+    return total, steps, success, cells, decisions
+
+
+def _decision_record(a: int, why: dict, r: float, q_old: float, q_new: float,
+                     alpha: float, next_max: float, td_target: float, terminated: bool) -> dict:
+    """压缩一条决策解说（短键名 + 保留 4 位小数），控制 WebSocket 数据量。"""
+    def r4(x: float) -> float:
+        return round(float(x), 4)
+    return {
+        "a": a,                                   # 实际动作 0上 1下 2左 3右
+        "x": 1 if why["explore"] else 0,          # 1=探索 0=寻优
+        "u": r4(why["u"]),                        # 掷出的随机数
+        "e": r4(why["epsilon"]),                  # 当前 ε
+        "q": [r4(v) for v in why["q"]],           # 决策前 Q(s,·)
+        "b": why["best"],                         # Q 最大的动作（可能并列）
+        "p": r4(why["prob"]),                     # 选中该动作的总概率
+        "r": r4(r),                               # 即时奖励
+        "q0": r4(q_old),                          # 更新前 Q(s,a)
+        "q1": r4(q_new),                          # 更新后 Q(s,a)
+        "al": r4(alpha),                          # 当前学习率 α
+        "nm": r4(next_max),                       # max Q(s',·)（终止时为 0）
+        "tt": r4(td_target),                      # TD 目标
+        "t": 1 if terminated else 0,              # 是否终止
+    }
 
 
 def run_qlearning(session: TrainSession) -> dict:
@@ -205,14 +240,15 @@ def run_qlearning(session: TrainSession) -> dict:
         if session.stop_event.is_set():
             break
         collect = (ep % traj_every == 0) or ep == 1
-        total, steps, success, cells = _run_one_episode_qlearning(env, agent, collect)
+        total, steps, success, cells, decisions = _run_one_episode_qlearning(env, agent, collect)
         session.metrics_rows.append((ep, round(total, 4), steps, int(success)))
         session.emit(
             {"type": "episode", "episode": ep, "reward": round(total, 4),
              "steps": steps, "success": success, "epsilon": round(agent.epsilon, 4)}
         )
         if collect:
-            session.emit({"type": "trajectory", "cells": cells, "episode": ep})
+            session.emit({"type": "trajectory", "cells": cells, "episode": ep,
+                          "decisions": decisions, "gamma": agent.gamma})
             # 逐步关键帧（仅该回合）：前端动画用
             for pos in cells:
                 session.emit({"type": "step", "pos": pos, "episode": ep})
@@ -481,7 +517,7 @@ def train_curriculum(req: CurriculumRequest):
         env.set_shaping_gamma(gamma)
         curve = []
         for ep in range(1, episodes + 1):
-            total, steps, success, _ = _run_one_episode_qlearning(env, agent, False)
+            total, steps, success, _, _ = _run_one_episode_qlearning(env, agent, False)
             curve.append({"episode": ep, "reward": round(total, 4), "success": int(success)})
         return curve
 

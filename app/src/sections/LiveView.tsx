@@ -6,9 +6,11 @@
 //   步数进度条拖动。即使训练 0.3 秒就结束（如 Q-Learning），也能完整回放。
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Pause, Play } from "lucide-react"
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
+import { DecisionCard } from "@/components/DecisionCard"
+import { MODE_STYLE, modeStats } from "@/lib/decision"
 import { MazeCanvas } from "@/components/MazeCanvas"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,7 +27,7 @@ const chartConfig = {
   success: { label: "成功率(滑动)", color: "#2e8b57" },
 } satisfies ChartConfig
 
-const SPEEDS = [1, 2, 4] as const
+const SPEEDS = [0.5, 1, 2, 4] as const
 
 function movingAvg(xs: number[], w: number): number[] {
   const out: number[] = []
@@ -58,6 +60,10 @@ export default function LiveView({ grid, training }: Props) {
   // 有可回放轨迹时进入回放模式（训练失败无轨迹则退回静态最后一帧）
   const replay = finished && trajectories.length > 0
   const curTraj = replay ? trajectories[Math.min(trajIdx, trajectories.length - 1)] : null
+  // 决策解说（仅 Q-Learning 提供）：第 stepIdx 条决策把智能体从 cells[stepIdx] 带到 cells[stepIdx+1]
+  const decisions = curTraj?.decisions
+  const curDecision = decisions && stepIdx < decisions.length ? decisions[stepIdx] : null
+  const stats = useMemo(() => (decisions ? modeStats(decisions) : null), [decisions])
 
   // 进入回放模式时：默认选最后一条轨迹（episode=-1 为最终贪心评估），从头自动播放
   const wasRunning = useRef(false)
@@ -143,11 +149,13 @@ export default function LiveView({ grid, training }: Props) {
             trail={trail}
             policy={policy}
             showHeatmap={showHeatmap}
+            agentAction={curDecision?.a ?? null}
+            agentMode={curDecision ? (curDecision.x ? "explore" : "exploit") : null}
           />
 
           {replay && curTraj && (
             <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="outline"
                   className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
                   onClick={() => {
@@ -156,6 +164,18 @@ export default function LiveView({ grid, training }: Props) {
                   }}>
                   {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   {playing ? "暂停" : "播放"}
+                </Button>
+                <Button size="sm" variant="outline" title="上一步"
+                  className="border-slate-300 bg-slate-100 px-2 text-slate-800 hover:bg-slate-200"
+                  disabled={stepIdx <= 0}
+                  onClick={() => { setPlaying(false); setStepIdx((i) => Math.max(0, i - 1)) }}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" title="下一步（逐步讲解）"
+                  className="border-slate-300 bg-slate-100 px-2 text-slate-800 hover:bg-slate-200"
+                  disabled={stepIdx >= curTraj.cells.length - 1}
+                  onClick={() => { setPlaying(false); setStepIdx((i) => Math.min(curTraj.cells.length - 1, i + 1)) }}>
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
                 <div className="flex gap-1">
                   {SPEEDS.map((s) => (
@@ -167,7 +187,7 @@ export default function LiveView({ grid, training }: Props) {
                     </Button>
                   ))}
                 </div>
-                <span className="ml-auto text-xs text-slate-500">
+                <span className="ml-auto whitespace-nowrap text-xs text-slate-500">
                   {curTraj.episode === -1 ? "最终贪心评估" : `第 ${curTraj.episode} 回合`}
                   {" · "}{stepIdx + 1}/{curTraj.cells.length} 步
                 </span>
@@ -184,6 +204,23 @@ export default function LiveView({ grid, training }: Props) {
                   value={[Math.min(stepIdx, curTraj.cells.length - 1)]}
                   onValueChange={([i]) => { setStepIdx(i); setPlaying(false) }} />
               </div>
+              {decisions && decisions.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-500">
+                    逐步决策条（<span className="text-orange-700">■ 探索</span>
+                    {" / "}<span className="text-sky-800">■ 寻优</span>，点击跳到该步）
+                  </Label>
+                  <div className="flex flex-wrap gap-[2px]">
+                    {decisions.map((d, i) => (
+                      <button key={i} type="button" title={`第 ${i + 1} 步：${d.x ? "探索" : "寻优"}`}
+                        onClick={() => { setStepIdx(i); setPlaying(false) }}
+                        className={cn("h-3 w-2 rounded-[1px]",
+                          d.x ? MODE_STYLE.explore.bg : MODE_STYLE.exploit.bg,
+                          i === stepIdx ? "ring-2 ring-ink ring-offset-1" : "opacity-80 hover:opacity-100")} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -216,6 +253,50 @@ export default function LiveView({ grid, training }: Props) {
       </Card>
 
       <div className="space-y-4">
+        {replay && curTraj && (
+          <Card className="border-slate-200 bg-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-slate-900">
+                决策解说：这一步是探索还是寻优？
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {stats && (
+                <div className="space-y-1">
+                  <div className="flex h-2 w-full overflow-hidden rounded">
+                    <div className={MODE_STYLE.explore.bg} style={{ width: `${stats.exploreRate * 100}%` }} />
+                    <div className={cn("flex-1", MODE_STYLE.exploit.bg)} />
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    {curTraj.episode === -1 ? "最终评估" : `第 ${curTraj.episode} 回合`}共 {stats.n} 步：
+                    <b className="text-orange-700">探索 {stats.explore} 步（{(stats.exploreRate * 100).toFixed(0)}%）</b>，
+                    <b className="text-sky-800">寻优 {stats.exploit} 步</b>。
+                    拖动“回合”滑块对比：早期回合几乎都在探索，后期大多在寻优——这就是 ε 衰减带来的“先探索、后利用”。
+                  </p>
+                </div>
+              )}
+              {curDecision && decisions ? (
+                <DecisionCard
+                  grid={grid}
+                  decision={curDecision}
+                  from={curTraj.cells[stepIdx]}
+                  to={curTraj.cells[stepIdx + 1]}
+                  stepNo={stepIdx + 1}
+                  gamma={curTraj.gamma ?? 0.99}
+                />
+              ) : decisions ? (
+                <p className="text-sm text-slate-600">
+                  回合结束。点击“上一步”或决策条，可以逐步查看智能体每一步的选择依据。
+                </p>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  逐步决策解说目前支持 Q-Learning：表格法每一步的依据（掷骰、Q 值、TD 更新）都能完整展开。
+                  PPO / DQN 由神经网络输出动作，此处只展示轨迹回放。
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
         <Card className="border-slate-200 bg-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-slate-900">回合回报曲线（20 回合滑动平均）</CardTitle>

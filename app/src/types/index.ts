@@ -43,11 +43,45 @@ export interface TrainRequestBody {
   label?: string
 }
 
+/**
+ * 一步决策解说（仅表格 Q-Learning 的采集回合提供，字段为后端压缩短键）。
+ * 第 i 条决策把智能体从 cells[i] 带到 cells[i+1]。
+ */
+export interface StepDecision {
+  /** 实际动作 0上 1下 2左 3右 */
+  a: number
+  /** 1=探索 0=寻优 */
+  x: 0 | 1
+  /** 掷出的随机数 u，u < ε 即探索 */
+  u: number
+  /** 当前探索率 ε */
+  e: number
+  /** 决策前 Q(s,·) */
+  q: number[]
+  /** Q 最大的动作（可能并列） */
+  b: number[]
+  /** ε-greedy 下选中该动作的总概率 */
+  p: number
+  /** 即时奖励 */
+  r: number
+  /** 更新前 / 后的 Q(s,a) */
+  q0: number
+  q1: number
+  /** 当前学习率 α */
+  al: number
+  /** max Q(s',·)，终止时为 0 */
+  nm: number
+  /** TD 目标 */
+  tt: number
+  /** 是否终止 */
+  t: 0 | 1
+}
+
 /** 训练 WebSocket 事件 */
 export type TrainEvent =
   | { type: "started"; algo: Algo; seed: number }
   | { type: "episode"; episode: number; reward: number; steps: number; success: boolean; epsilon: number | null }
-  | { type: "trajectory"; cells: [number, number][]; episode: number }
+  | { type: "trajectory"; cells: [number, number][]; episode: number; decisions?: StepDecision[]; gamma?: number }
   | { type: "step"; pos: [number, number]; episode: number }
   | { type: "done"; summary: TrainSummary }
   | { type: "error"; message: string }

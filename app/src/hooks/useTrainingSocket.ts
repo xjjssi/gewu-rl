@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from "react"
 import type {
   Algo,
   EpisodePoint,
+  StepDecision,
   TrainEvent,
   TrainRequestBody,
   TrainSummary,
@@ -17,6 +18,10 @@ export type TrainStatus = "idle" | "running" | "done" | "error" | "stopped"
 export interface TrajectoryRecord {
   episode: number
   cells: [number, number][]
+  /** 逐步决策解说（仅 Q-Learning），与 cells[1:] 对齐 */
+  decisions?: StepDecision[]
+  /** 折扣因子 γ，用于在解说卡中代入 TD 目标公式 */
+  gamma?: number
 }
 
 export interface TrainingState {
@@ -101,7 +106,14 @@ export function useTrainingSocket() {
             case "step":
               return { ...s, stepStream: [...s.stepStream, ev.pos] }
             case "trajectory":
-              return { ...s, trajectory: ev.cells, trajectories: [...s.trajectories, { episode: ev.episode, cells: ev.cells }] }
+              return {
+                ...s,
+                trajectory: ev.cells,
+                trajectories: [
+                  ...s.trajectories,
+                  { episode: ev.episode, cells: ev.cells, decisions: ev.decisions, gamma: ev.gamma },
+                ],
+              }
             case "done":
               return { ...s, status: ev.summary.stopped ? "stopped" : "done", summary: ev.summary }
             case "error":

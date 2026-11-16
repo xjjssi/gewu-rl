@@ -30,6 +30,10 @@ interface Props {
   showHeatmap?: boolean
   editable?: boolean
   onCell?: (r: number, c: number) => void
+  /** 智能体本步将执行的动作（决策解说用，在智能体上叠加方向箭头） */
+  agentAction?: number | null
+  /** 本步决策模式：探索（橙）/ 寻优（蓝） */
+  agentMode?: "explore" | "exploit" | null
 }
 
 function heatColor(v: number, min: number, max: number): string {
@@ -42,7 +46,7 @@ function heatColor(v: number, min: number, max: number): string {
   return `rgb(${mix(0)},${mix(1)},${mix(2)})`
 }
 
-export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell }: Props) {
+export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell, agentAction, agentMode }: Props) {
   const h = grid.length
   const w = grid[0]?.length ?? 0
   const trailSet = new Set((trail ?? []).map(([r, c]) => `${r},${c}`))
@@ -94,7 +98,16 @@ export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editabl
               {cell === Cell.BONUS && <span className="text-[10px] text-amber-900">+</span>}
               {cell === Cell.TRAP && <span className="text-[10px] text-white">×</span>}
               {isAgent && (
-                <div className="absolute inset-[6px] rounded-full border-2 border-white bg-ink shadow-sm" />
+                <div
+                  className={cn(
+                    "absolute inset-[6px] flex items-center justify-center rounded-full border-2 border-white shadow-sm",
+                    agentMode === "explore" ? "bg-orange-500" : agentMode === "exploit" ? "bg-sky-700" : "bg-ink",
+                  )}
+                >
+                  {agentAction != null && (
+                    <span className="text-[12px] font-bold leading-none text-white">{ARROWS[agentAction]}</span>
+                  )}
+                </div>
               )}
             </div>
           )

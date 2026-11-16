@@ -66,6 +66,41 @@ class QLearningAgent:
         best = np.flatnonzero(q == q.max())
         return int(self.rng.choice(best))
 
+    def select_action_explained(self, state: int) -> tuple[int, dict]:
+        """与 select_action(greedy=False) 完全等价的 ε-greedy 选动作，额外返回"决策解说"。
+
+        随机数的调用顺序与 select_action 逐一对应（random → integers / choice），
+        因此开启解说不会改变训练轨迹，正式实验结果可原样复现。
+
+        解说字段（供前端"决策解说卡"使用）：
+        - explore：这一步是探索（True）还是寻优/利用（False）
+        - u：本步掷出的 [0,1) 随机数，u < ε 即探索
+        - epsilon：当前探索率
+        - q：决策前 Q(s,·)，即"对每个方向的印象分"
+        - best：Q 值最大的动作（可能并列多个）
+        - prob：ε-greedy 策略选中该动作的总概率
+                π(a|s) = ε/|A| + (1−ε)·[a∈best]/|best|
+        """
+        eps = self.epsilon
+        q = self.q_table[state].copy()
+        best = np.flatnonzero(q == q.max())
+        u = float(self.rng.random())
+        explore = u < eps
+        if explore:
+            a = int(self.rng.integers(self.n_actions))
+        else:
+            a = int(self.rng.choice(best))
+        prob = eps / self.n_actions + ((1.0 - eps) / len(best) if a in best else 0.0)
+        info = {
+            "explore": bool(explore),
+            "u": u,
+            "epsilon": float(eps),
+            "q": [float(v) for v in q],
+            "best": [int(b) for b in best],
+            "prob": float(prob),
+        }
+        return a, info
+
     def update(
         self,
         state: int,
