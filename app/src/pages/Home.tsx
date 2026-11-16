@@ -11,6 +11,7 @@ import ControlPanel, { DEFAULT_CONFIG, type TrainConfig } from "@/sections/Contr
 import CompareView from "@/sections/CompareView"
 import LiveView from "@/sections/LiveView"
 import MazeEditor from "@/sections/MazeEditor"
+import PkView from "@/sections/PkView"
 import RewardDesigner from "@/sections/RewardDesigner"
 import type { MazeGrid, RewardConfigForm } from "@/types"
 
@@ -98,6 +99,7 @@ export default function Home() {
               <TabsTrigger value="designer">AI 奖励设计师</TabsTrigger>
               <TabsTrigger value="live">训练实时视图</TabsTrigger>
               <TabsTrigger value="compare">实验对比</TabsTrigger>
+              <TabsTrigger value="pk">人机 PK</TabsTrigger>
             </TabsList>
             {/* forceMount：切换标签页时保留各页状态（意图实验结果、回放进度、已勾选曲线），录屏演示时不丢失 */}
             <TabsContent value="editor" className="mt-4">
@@ -116,6 +118,16 @@ export default function Home() {
             </TabsContent>
             <TabsContent value="compare" forceMount className="mt-4 data-[state=inactive]:hidden">
               <CompareView active={tab === "compare"} />
+            </TabsContent>
+            <TabsContent value="pk" forceMount className="mt-4 data-[state=inactive]:hidden">
+              {/* PK 对手固定用表格 Q-Learning；当前选的是 PPO/DQN 时退回 Q-Learning 默认超参 */}
+              <PkView
+                grid={grid}
+                reward={config.reward}
+                hyper={config.algo === "qlearning" ? config.hyper : DEFAULT_CONFIG.hyper}
+                seed={config.seed}
+                active={tab === "pk"}
+              />
             </TabsContent>
           </Tabs>
         </section>

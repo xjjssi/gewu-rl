@@ -111,3 +111,32 @@ def test_intent_experiment_400_branches():
         "instruction": "快点走", "maze": WALL6, "n_seeds": 99}).status_code == 400
     assert client.post("/api/intent-experiment", json={
         "instruction": "快点走", "maze": WALL6, "algo": "dpo"}).status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# 人机 PK（方案二）
+# ---------------------------------------------------------------------------
+
+def test_pk_prepare_snapshots_match_live_training():
+    """三档对手按训练进度排列；"训练完成"档与训练实时视图的智能体 Q 表逐位一致。"""
+    import numpy as np
+    import main
+
+    hp = {"episodes": 120}
+    r = client.post("/api/pk/prepare", json={"maze": WALL6, "hyperparams": hp, "seed": 1})
+    assert r.status_code == 200
+    data = r.json()
+    ops = data["opponents"]
+    assert [o["label"] for o in ops] == ["新手 RL", "进阶 RL", "训练完成的 RL"]
+    assert [o["episode"] for o in ops] == [6, 36, 120]
+    assert ops[0]["epsilon"] > ops[1]["epsilon"] > ops[2]["epsilon"]
+    assert data["bonus_cells"] == [[1, 4]]
+
+    session = main.TrainSession("t-pk", main.TrainRequest(maze=WALL6, hyperparams=hp, seed=1))
+    _, agent = main.run_qlearning(session)
+    assert np.allclose(np.array(ops[2]["q_table"]), np.round(agent.q_table, 4))
+
+
+def test_pk_prepare_rejects_invalid_maze():
+    r = client.post("/api/pk/prepare", json={"maze": [[0, 0], [0, 0]]})
+    assert r.status_code == 400

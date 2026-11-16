@@ -34,6 +34,8 @@ interface Props {
   agentAction?: number | null
   /** 本步决策模式：探索（橙）/ 寻优（蓝） */
   agentMode?: "explore" | "exploit" | null
+  /** 迷雾模式：返回 true 的格子显示为未知（人机 PK 中模拟智能体"看不到地图"） */
+  isHidden?: (r: number, c: number) => boolean
 }
 
 function heatColor(v: number, min: number, max: number): string {
@@ -46,7 +48,7 @@ function heatColor(v: number, min: number, max: number): string {
   return `rgb(${mix(0)},${mix(1)},${mix(2)})`
 }
 
-export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell, agentAction, agentMode }: Props) {
+export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell, agentAction, agentMode, isHidden }: Props) {
   const h = grid.length
   const w = grid[0]?.length ?? 0
   const trailSet = new Set((trail ?? []).map(([r, c]) => `${r},${c}`))
@@ -70,6 +72,14 @@ export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editabl
           const isAgent = agentPos && agentPos[0] === r && agentPos[1] === c
           const inTrail = trailSet.has(`${r},${c}`)
           const p = policyMap.get(`${r},${c}`)
+          if (!isAgent && isHidden?.(r, c)) {
+            return (
+              <div key={key}
+                className="flex aspect-square w-9 items-center justify-center rounded-[4px] bg-slate-300 text-[11px] text-slate-500">
+                ?
+              </div>
+            )
+          }
           return (
             <div
               key={key}

@@ -553,6 +553,70 @@ def train_curriculum(req: CurriculumRequest):
 
 
 # ----------------------------------------------------------------------
+# 人机 PK（学以致用）：训练一个 Q-Learning 对手，按训练进度保存 Q 表快照
+# ----------------------------------------------------------------------
+
+PK_MAX_STATES = 20_000  # Q 表行数上限（格子数 × 2^奖励格数），防止返回体过大
+
+
+class PkPrepareRequest(BaseModel):
+    maze: list[list[int]]
+    hyperparams: dict[str, Any] = {}
+    reward_config: dict[str, Any] = {}
+    seed: int = 0
+
+
+@app.post("/api/pk/prepare")
+def pk_prepare(req: PkPrepareRequest):
+    """训练表格 Q-Learning，在"新手 / 进阶 / 训练完成"三个时间点保存 Q 表与 ε。
+
+    前端用这些快照在玩家所在的同一格上复现 RL 的 ε-greedy 决策，
+    与玩家的选择逐步对比。训练过程与 /api/train/start 的 Q-Learning 完全相同
+    （同参数、同种子），所以"训练完成"档就是训练实时视图里那只智能体。
+    """
+    try:
+        env = GridMazeEnv(req.maze, RewardConfig.from_dict(req.reward_config))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if env.n_states > PK_MAX_STATES:
+        raise HTTPException(400, f"迷宫状态数 {env.n_states} 过多（奖励格太多），请减少奖励格后再试")
+    hp = req.hyperparams
+    episodes = max(20, min(5000, int(hp.get("episodes", 500))))
+    gamma = float(hp.get("gamma", 0.99))
+    env.set_shaping_gamma(gamma)
+    agent = QLearningAgent(
+        n_states=env.n_states,
+        learning_rate=float(hp.get("learning_rate", 0.1)),
+        gamma=gamma,
+        epsilon_start=float(hp.get("epsilon_start", 1.0)),
+        epsilon_end=float(hp.get("epsilon_end", 0.05)),
+        epsilon_decay_episodes=int(hp.get("epsilon_decay_episodes", episodes * 0.8)),
+        seed=req.seed,
+    )
+    checkpoints = {
+        max(1, round(episodes * 0.05)): "新手 RL",
+        max(2, round(episodes * 0.3)): "进阶 RL",
+        episodes: "训练完成的 RL",
+    }
+    opponents = []
+    for ep in range(1, episodes + 1):
+        _run_one_episode_qlearning(env, agent, False)
+        if ep in checkpoints:
+            opponents.append({
+                "label": checkpoints[ep],
+                "episode": ep,
+                "epsilon": round(float(agent.epsilon), 4),
+                "q_table": np.round(agent.q_table, 4).tolist(),
+            })
+    return {
+        "opponents": opponents,
+        "bonus_cells": [list(c) for c in env.bonus_cells],  # 收集掩码的位序（行优先）
+        "max_steps": env.max_steps,
+        "gamma": gamma,
+    }
+
+
+# ----------------------------------------------------------------------
 # AI 奖励设计师：意图 → 奖励配置 → 对照实验 → 意图达成度验证
 # ----------------------------------------------------------------------
 
