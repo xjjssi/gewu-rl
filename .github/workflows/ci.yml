@@ -1,0 +1,30 @@
+# CI：每次推送 / PR 自动运行后端测试、前端类型检查与生产构建、浏览器引擎一致性检查
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: 安装后端依赖（CPU 版 PyTorch）
+        run: pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+      - name: 安装前端依赖
+        run: npm ci
+        working-directory: app
+      - name: 前端类型检查与生产构建
+        run: npm run build
+        working-directory: app
+      - name: 后端测试（含浏览器引擎一致性检查）
+        run: python -m pytest

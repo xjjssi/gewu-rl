@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "如在教学或研究中使用格物RL，请按以下信息引用。"
+title: "格物RL：可视化强化学习教学实验平台"
+type: software
+authors:
+  - name: "格物RL 团队"
+license: MIT
+version: "1.1.0"
+date-released: "2026-11-18"
+keywords:
+  - reinforcement learning
+  - education
+  - q-learning
+  - reward shaping
+  - gymnasium

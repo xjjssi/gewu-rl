@@ -7,6 +7,17 @@
 > “格物致知”——通过亲手搭建环境、调整奖励、观察曲线，理解强化学习的核心概念：
 > 探索与利用、折现因子、奖励塑形（PBRS）、函数逼近与表格法的差异。
 
+## 🚀 三种使用方式
+
+| 方式 | 怎么用 | 功能 |
+|---|---|---|
+| **在线体验版** | 打开部署后的网页即可（零安装）；自行发布见 [docs/部署指南.md](docs/部署指南.md) | Q-Learning 训练与回放、决策解说、价值传播、人机 PK、实验任务链接 |
+| **本地完整版** | Windows 双击 `start.bat`，macOS / Linux 运行 `./start.sh` | 全部功能（含 PPO/DQN、AI 奖励设计师、实验对比、课程学习） |
+| **课堂教学包** | [docs/教学/](docs/教学/)：三份 45 分钟实验指导书 + 课堂试用问卷与统计脚本 | 教师直接布置，学生用"实验任务链接"一键进入同一实验 |
+
+页面右上角徽标显示当前模式；在线体验版中需要后端的功能会给出说明。浏览器训练引擎
+（`app/src/lib/localEngine.ts`）逐项移植自 `gridworld_edu`，`tests/test_browser_engine.py` 校验两者一致。
+
 ## ✨ 核心创新：AI 奖励设计师
 
 用**中文自然语言**描述教学目标（例如"让智能体学会绕开陷阱，宁愿绕远路也不冒险"），
@@ -71,7 +82,12 @@
 
 ## 本次提交版本
 
-**2026-11-18 半决赛版**：在 10-30 浅色界面版基础上，按"趣味性与易懂性并存"的教学目标新增：
+**2026-11-18 半决赛版（v1.1.0，变更见 [CHANGELOG.md](CHANGELOG.md)）**：在 10-30 浅色界面版基础上，按"趣味性与易懂性并存"的教学目标新增：
+
+- **价值传播回放**：打开 Q 值热力图后点"价值传播动画"，按回合播放每格价值的变化（0 中心对称色标，各回合可比），
+  直观看到终点奖励经 TD 目标 r + γ·max Q(s′) 一格一格回传到起点——Bellman 方程的"自举"。
+- **在线体验版**：未连接后端时自动切换为浏览器内运行，可部署到 GitHub Pages 等静态站点，零安装使用。
+- **实验任务链接**：右上角"分享实验任务"把迷宫、参数和任务说明编码进链接，学生打开即得到同一实验设置。
 
 - **决策解说**（训练实时视图 → 回放时右侧）：Q-Learning 每一步都能看到"这一步是探索还是寻优"——
   掷骰 u 与 ε 的比较、四个方向被选中的概率 π(a|s)、寻优所依据的 Q 值、TD 更新代入真实数字、人类类比；
@@ -81,7 +97,7 @@
 - **概念速查**：参数旁"?"小贴士（术语 → 人话 → 公式）与右上角"RL 与人类决策"对照表。
 
 解说数据由后端训练时如实记录（`QLearningAgent.select_action_explained`），随机数调用顺序与普通选动作一致，
-开启解说不改变训练结果；自动化测试增至 48 项。
+开启解说不改变训练结果；自动化测试增至 54 项。
 
 2026-10-30 浅色教学界面版。训练控制台、迷宫编辑、奖励设计、实时视图和实验对比均已同步改版。热力图为橙色表示较低值、蓝色表示较高值；箭头表示当前状态选取的动作。演示视频与截图使用当前界面。
 
@@ -150,6 +166,9 @@ gewu-rl/
 │       ├── sections/ControlPanel.tsx# 训练控制台（算法/超参/奖励塑形）
 │       ├── sections/LiveView.tsx    # 实时视图（动画+曲线+策略叠加）
 │       ├── sections/CompareView.tsx # 实验对比 + 课程学习对照
+│       ├── sections/PkView.tsx      # 人机 PK（同格同步出招、迷雾模式）
+│       ├── lib/localEngine.ts       # 浏览器训练引擎（在线体验版）
+│       ├── lib/taskLink.ts          # 实验任务链接（编码 / 校验）
 │       ├── hooks/useTrainingSocket.ts
 │       ├── components/MazeCanvas.tsx
 │       └── types/index.ts
@@ -161,7 +180,12 @@ gewu-rl/
 │   ├── report_experiments.py # 报告用正式实验（默认 20 种子，可 --seeds/--quick）
 │   ├── runs/                 # 每次训练自动落盘（config/metrics/policy）
 │   └── results/              # reproduce.py 输出
-├── tests/                    # pytest 测试（环境/算法/API），根目录 `python -m pytest` 可跑
+├── tests/                    # pytest 测试（环境/算法/API/浏览器引擎一致性/问卷统计），根目录 `python -m pytest`
+├── docs/教学/                # 三份实验指导书 + 课堂试用问卷
+├── docs/部署指南.md          # 在线体验版 / 本地完整版 / 机房服务器 三种部署
+├── tools/analyze_survey.py   # 问卷统计（前后测、SUS 可用性）
+├── start.bat / start.sh      # 一键启动（首次自动安装依赖）
+├── .github/                  # CI（测试 + 构建）、Pages 自动部署、Issue / PR 模板
 ├── gridworld_edu/            # 教学核心包（可 pip install -e，MIT）
 │   └── gridworld_edu/
 │       ├── envs/grid_maze.py # GridMazeEnv + RewardConfig（PBRS）

@@ -1,0 +1,46 @@
+# 在线体验版：把前端以"浏览器模式"（VITE_STATIC=1）构建并发布到 GitHub Pages。
+# 启用方法：仓库 Settings → Pages → Source 选 "GitHub Actions"；推送到 main 后自动部署，
+# 地址为 https://<用户名>.github.io/<仓库名>/
+name: Deploy online demo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - run: npm run build
+        working-directory: app
+        env:
+          VITE_STATIC: "1"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
