@@ -281,7 +281,7 @@ export default function PkView({ grid, reward, hyper, seed, active }: Props) {
             )}
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <div className="flex items-center gap-2">
-                <Switch id="fog" checked={fog} onCheckedChange={setFog} disabled={playing} />
+                <Switch id="fog" checked={fog} onCheckedChange={setFog} />
                 <Label htmlFor="fog" className="flex items-center gap-1 text-xs text-slate-700">
                   {fog ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   迷雾模式（只看得见走过的格子，和 RL 一样）
