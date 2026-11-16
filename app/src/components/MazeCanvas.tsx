@@ -34,6 +34,8 @@ interface Props {
   agentAction?: number | null
   /** 本步决策模式：探索（橙）/ 寻优（蓝） */
   agentMode?: "explore" | "exploit" | null
+  /** 热力图固定色标 [min, max]：价值传播回放时各回合共用同一色标，颜色才可比 */
+  heatRange?: [number, number] | null
   /** 迷雾模式：返回 true 的格子显示为未知（人机 PK 中模拟智能体"看不到地图"） */
   isHidden?: (r: number, c: number) => boolean
 }
@@ -48,7 +50,7 @@ function heatColor(v: number, min: number, max: number): string {
   return `rgb(${mix(0)},${mix(1)},${mix(2)})`
 }
 
-export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell, agentAction, agentMode, isHidden }: Props) {
+export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editable, onCell, agentAction, agentMode, isHidden, heatRange }: Props) {
   const h = grid.length
   const w = grid[0]?.length ?? 0
   const trailSet = new Set((trail ?? []).map(([r, c]) => `${r},${c}`))
@@ -59,6 +61,12 @@ export function MazeCanvas({ grid, agentPos, trail, policy, showHeatmap, editabl
     policyMap.set(`${p.pos[0]},${p.pos[1]}`, p)
     qMin = Math.min(qMin, p.q_max)
     qMax = Math.max(qMax, p.q_max)
+  }
+  if (heatRange) {
+    // 价值传播模式：以 0 为中心的对称色标——正价值为蓝、0 为白、负价值为橙，各回合颜色可直接比较
+    const m = Math.max(Math.abs(heatRange[0]), Math.abs(heatRange[1]), 1e-6)
+    qMin = -m
+    qMax = m
   }
 
   return (

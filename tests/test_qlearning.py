@@ -155,3 +155,22 @@ def test_api_trajectory_carries_decisions():
             assert rec["x"] in (0, 1)
             # TD 更新公式自洽：q1 = q0 + α·(tt − q0)
             assert rec["q1"] == pytest.approx(rec["q0"] + rec["al"] * (rec["tt"] - rec["q0"]), abs=2e-4)
+
+
+def test_api_trajectory_carries_value_snapshots_that_propagate():
+    """价值传播：轨迹事件附带当时的价值快照；训练推进后，正价值区域应从终点附近向外扩散。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+    import main
+
+    req = main.TrainRequest(maze=PRESETS["single_wall_6x6"]["grid"], algo="qlearning",
+                            hyperparams={"episodes": 300}, seed=0)
+    session = main.TrainSession("t-values", req)
+    main.run_qlearning(session)
+    trajs = [e for e in session.buffer if e["type"] == "trajectory"]
+    assert all("policy" in t and t["policy"] for t in trajs)
+    positive = [sum(c["q_max"] > 0 for c in t["policy"]) for t in trajs]
+    # 第 1 回合几乎没有正价值格子；训练结束时正价值已覆盖大部分可通行格子
+    assert positive[0] <= 3
+    assert positive[-1] > positive[0] + 10

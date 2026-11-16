@@ -6,7 +6,7 @@
 //   步数进度条拖动。即使训练 0.3 秒就结束（如 Q-Learning），也能完整回放。
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
+import { ChevronLeft, ChevronRight, Pause, Play, Waves } from "lucide-react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { ConceptTip } from "@/components/ConceptTip"
@@ -56,6 +56,7 @@ export default function LiveView({ grid, training }: Props) {
   const [stepIdx, setStepIdx] = useState(0)      // 轨迹内步数下标
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
+  const [valuePlaying, setValuePlaying] = useState(false) // "价值传播"动画：逐回合推进价值快照
 
   const finished = status === "done" || status === "stopped"
   // 有可回放轨迹时进入回放模式（训练失败无轨迹则退回静态最后一帧）
@@ -119,7 +120,37 @@ export default function LiveView({ grid, training }: Props) {
       ? stepStream[Math.min(playIdx, stepStream.length - 1)]
       : null
   const trail = replay && curTraj ? curTraj.cells : trajectory
-  const policy = finished ? summary?.policy.cells ?? null : null
+  // 回放时显示"所选回合结束时"的策略与价值快照（Q-Learning 提供），否则显示最终策略
+  const policy = finished ? (replay && curTraj?.policy ? curTraj.policy : summary?.policy.cells ?? null) : null
+  const hasSnapshots = replay && trajectories.some((t) => t.policy)
+  // 全部快照共用一个色标，不同回合的颜色才可比，才能"看见"价值向起点扩散
+  const heatRange = useMemo<[number, number] | null>(() => {
+    if (!hasSnapshots) return null
+    let lo = Infinity, hi = -Infinity
+    for (const t of trajectories) for (const c of t.policy ?? []) { lo = Math.min(lo, c.q_max); hi = Math.max(hi, c.q_max) }
+    return Number.isFinite(lo) ? [lo, hi] : null
+  }, [hasSnapshots, trajectories])
+  const positiveCells = policy ? policy.filter((c) => c.q_max > 1e-6).length : 0
+
+  // 价值传播动画：从第 1 条代表性轨迹起，每 450ms 前进一个快照，到最后自动停止
+  useEffect(() => {
+    if (!valuePlaying) return
+    const timer = setInterval(() => {
+      setTrajIdx((i) => {
+        if (i + 1 >= trajectories.length) { setValuePlaying(false); return i }
+        return i + 1
+      })
+    }, 450)
+    return () => clearInterval(timer)
+  }, [valuePlaying, trajectories.length])
+  const startValuePlay = () => {
+    setShowHeatmap(true)
+    setPlaying(false)
+    setStepIdx(0)
+    setTrajIdx(0)
+    setValuePlaying(true)
+  }
+
 
   // 曲线数据：回报 + 成功率滑动平均（20 回合窗口）
   const curveData = useMemo(() => {
@@ -147,9 +178,10 @@ export default function LiveView({ grid, training }: Props) {
           <MazeCanvas
             grid={grid}
             agentPos={agentPos}
-            trail={trail}
+            trail={showHeatmap ? [] : trail}  // 热力图开启时隐藏轨迹底色，避免与价值蓝色混淆
             policy={policy}
             showHeatmap={showHeatmap}
+            heatRange={showHeatmap ? heatRange : null}
             agentAction={curDecision?.a ?? null}
             agentMode={curDecision ? (curDecision.x ? "explore" : "exploit") : null}
           />
@@ -232,6 +264,21 @@ export default function LiveView({ grid, training }: Props) {
                 Q 值热力图（关闭时显示策略箭头底色）
               </Label>
               <ConceptTip k="heatmap" />
+              {hasSnapshots && (
+                <Button size="sm" variant="outline" onClick={valuePlaying ? () => setValuePlaying(false) : startValuePlay}
+                  className="ml-auto border-sky-300 bg-sky-50 text-xs text-sky-800 hover:bg-sky-100">
+                  <Waves className="h-4 w-4" />
+                  {valuePlaying ? "停止" : "价值传播动画"}
+                </Button>
+              )}
+            </div>
+          )}
+          {finished && showHeatmap && hasSnapshots && curTraj && (
+            <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900">
+              <b>{curTraj.episode === -1 ? "最终" : `第 ${curTraj.episode} 回合结束时`}的价值地图</b>：
+              {positiveCells} / {policy?.length ?? 0} 个格子已有正价值（蓝色越深价值越高，橙色为负值），箭头为当时的贪心策略。
+              终点奖励通过 TD 目标 r + γ·maxQ(s′) 一格一格向回传播——早期只有终点附近变蓝，
+              训练推进后蓝色扩散到起点，这就是 Bellman 方程的“自举”。
             </div>
           )}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

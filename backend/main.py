@@ -247,8 +247,11 @@ def run_qlearning(session: TrainSession) -> dict:
              "steps": steps, "success": success, "epsilon": round(agent.epsilon, 4)}
         )
         if collect:
+            # policy：本回合结束时的策略与价值快照（每格 Q 值、贪心动作）。前端用它播放"价值传播"——
+            # 终点奖励经 TD 目标 r + γ·max Q(s') 一格一格向起点回传（Bellman 自举）的过程。
             session.emit({"type": "trajectory", "cells": cells, "episode": ep,
-                          "decisions": decisions, "gamma": agent.gamma})
+                          "decisions": decisions, "gamma": agent.gamma,
+                          "policy": agent.greedy_policy(env)["cells"]})
             # 逐步关键帧（仅该回合）：前端动画用
             for pos in cells:
                 session.emit({"type": "step", "pos": pos, "episode": ep})

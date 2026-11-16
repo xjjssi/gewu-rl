@@ -81,7 +81,7 @@ export interface StepDecision {
 export type TrainEvent =
   | { type: "started"; algo: Algo; seed: number }
   | { type: "episode"; episode: number; reward: number; steps: number; success: boolean; epsilon: number | null }
-  | { type: "trajectory"; cells: [number, number][]; episode: number; decisions?: StepDecision[]; gamma?: number }
+  | { type: "trajectory"; cells: [number, number][]; episode: number; decisions?: StepDecision[]; gamma?: number; policy?: PolicyCell[] }
   | { type: "step"; pos: [number, number]; episode: number }
   | { type: "done"; summary: TrainSummary }
   | { type: "error"; message: string }

@@ -7,6 +7,7 @@ import { useCallback, useRef, useState } from "react"
 import type {
   Algo,
   EpisodePoint,
+  PolicyCell,
   StepDecision,
   TrainEvent,
   TrainRequestBody,
@@ -22,6 +23,8 @@ export interface TrajectoryRecord {
   decisions?: StepDecision[]
   /** 折扣因子 γ，用于在解说卡中代入 TD 目标公式 */
   gamma?: number
+  /** 该回合结束时的策略与价值快照（仅 Q-Learning），用于"价值传播"回放 */
+  policy?: PolicyCell[]
 }
 
 export interface TrainingState {
@@ -111,7 +114,7 @@ export function useTrainingSocket() {
                 trajectory: ev.cells,
                 trajectories: [
                   ...s.trajectories,
-                  { episode: ev.episode, cells: ev.cells, decisions: ev.decisions, gamma: ev.gamma },
+                  { episode: ev.episode, cells: ev.cells, decisions: ev.decisions, gamma: ev.gamma, policy: ev.policy },
                 ],
               }
             case "done":
