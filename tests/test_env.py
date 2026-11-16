@@ -146,3 +146,14 @@ def test_shaping_policy_invariance_small_gamma():
     """γ=0.8（刻意远离默认 0.99）时，有无 PBRS 的最优策略完全一致（价值迭代验证）。"""
     ok, n_bad, n_all = check_policy_invariance(PRESETS["single_wall_6x6"]["grid"], gamma=0.8)
     assert ok, f"{n_bad}/{n_all} 个状态的最优动作集合不一致"
+
+
+def test_frontend_preset_copy_matches_backend():
+    """浏览器模式使用的前端预设副本（app/src/lib/presets.ts）必须与后端预设逐格一致。"""
+    import json
+    import re
+    from pathlib import Path
+    from gridworld_edu.envs.presets import PRESETS
+    ts = (Path(__file__).resolve().parent.parent / "app" / "src" / "lib" / "presets.ts").read_text(encoding="utf-8")
+    found = {m.group(1): json.loads(m.group(2)) for m in re.finditer(r'id: "(\w+)", name: "[^"]+", grid: (\[\[.*?\]\])', ts)}
+    assert found == {k: v["grid"] for k, v in PRESETS.items()}

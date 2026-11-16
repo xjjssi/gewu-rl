@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { detectBackend } from "@/lib/backend"
+import { LOCAL_PRESETS } from "@/lib/presets"
 import { cn } from "@/lib/utils"
 import { Cell, type MazeGrid, type Preset } from "@/types"
 
@@ -79,15 +81,16 @@ interface Props {
 export default function MazeEditor({ grid, onChange }: Props) {
   const [brush, setBrush] = useState<Brush>(Cell.WALL)
   const [presets, setPresets] = useState<Preset[]>([])
-  const [presetsError, setPresetsError] = useState(false)
   // 加载预设后递增 nonce 强制重置下拉框，否则再选同一个预设不触发 onValueChange
   const [presetNonce, setPresetNonce] = useState(0)
 
   useEffect(() => {
-    fetch("/api/presets")
-      .then((r) => r.json())
-      .then((d) => { setPresets(d.presets ?? []); setPresetsError(false) })
-      .catch(() => { setPresets([]); setPresetsError(true) })
+    // 完整版从后端读取预设；在线体验版（或后端异常）使用前端副本（与后端逐格一致，有测试保证）
+    detectBackend()
+      .then((m) => (m === "online"
+        ? fetch("/api/presets").then((r) => r.json()).then((d) => setPresets(d.presets ?? LOCAL_PRESETS))
+        : setPresets(LOCAL_PRESETS)))
+      .catch(() => setPresets(LOCAL_PRESETS))
   }, [])
 
   const paint = (r: number, c: number) => {
@@ -168,11 +171,6 @@ export default function MazeEditor({ grid, onChange }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            {presetsError && (
-              <p className="text-xs text-rose-600">
-                预设加载失败，请先启动后端（uvicorn main:app --port 8000）
-              </p>
-            )}
           </div>
           <Button size="sm" variant="outline" className="border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
             onClick={() => onChange(randomGrid(grid.length))}>

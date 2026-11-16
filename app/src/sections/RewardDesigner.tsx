@@ -17,6 +17,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { OfflineNotice } from "@/components/OfflineNotice"
+import { useBackendMode } from "@/hooks/useBackendMode"
+import { detectBackend } from "@/lib/backend"
+import { LOCAL_PRESETS } from "@/lib/presets"
 import { cn } from "@/lib/utils"
 import type {
   Algo,
@@ -83,6 +87,7 @@ const METRIC_ROWS: MetricRow[] = [
 let presetCache: Preset[] | null = null
 async function loadPresets(): Promise<Preset[]> {
   if (!presetCache) {
+    if ((await detectBackend()) === "offline") return LOCAL_PRESETS
     const r = await fetch("/api/presets")
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     presetCache = (await r.json()).presets
@@ -98,6 +103,7 @@ interface Props {
 }
 
 export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoadMaze }: Props) {
+  const mode = useBackendMode()
   const [instruction, setInstruction] = useState("")
   const [showLlm, setShowLlm] = useState(false)
   const [llm, setLlm] = useState<LlmConfig>({
@@ -219,6 +225,7 @@ export default function RewardDesigner({ grid, onApplyReward, onGoCompare, onLoa
 
   return (
     <div className="space-y-4">
+      {mode === "offline" && <OfflineNotice feature="AI 奖励设计师（中文意图 → 奖励配置 → 多种子三组对照验证）" />}
       <Card className="border-slate-200 bg-white">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base text-slate-900">

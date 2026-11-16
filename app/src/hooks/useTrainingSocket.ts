@@ -4,10 +4,14 @@
 // 逐事件更新状态。step 事件进入 stepStream 供 LiveView 定速回放。
 
 import { useCallback, useRef, useState } from "react"
+
+import { detectBackend } from "@/lib/backend"
+import { trainLocal } from "@/lib/localEngine"
 import type {
   Algo,
   EpisodePoint,
   PolicyCell,
+  RewardConfigForm,
   StepDecision,
   TrainEvent,
   TrainRequestBody,
@@ -61,12 +65,39 @@ const initialState: TrainingState = {
 /** 后端未启动时的统一中文提示 */
 const BACKEND_HINT = "无法连接后端服务，请先启动后端（uvicorn main:app --port 8000）"
 
+/** 把一条训练事件合并进状态（后端 WebSocket 与浏览器内训练共用） */
+function applyEvent(s: TrainingState, ev: TrainEvent): TrainingState {
+  switch (ev.type) {
+    case "episode":
+      return { ...s, episodes: [...s.episodes, ev], currentEpisode: ev.episode, epsilon: ev.epsilon }
+    case "step":
+      return { ...s, stepStream: [...s.stepStream, ev.pos] }
+    case "trajectory":
+      return {
+        ...s,
+        trajectory: ev.cells,
+        trajectories: [
+          ...s.trajectories,
+          { episode: ev.episode, cells: ev.cells, decisions: ev.decisions, gamma: ev.gamma, policy: ev.policy },
+        ],
+      }
+    case "done":
+      return { ...s, status: ev.summary.stopped ? "stopped" : "done", summary: ev.summary }
+    case "error":
+      return { ...s, status: "error", error: ev.message }
+    default:
+      return s
+  }
+}
+
 export function useTrainingSocket() {
   const [state, setState] = useState<TrainingState>(initialState)
   const wsRef = useRef<WebSocket | null>(null)
   const sessionRef = useRef<string | null>(null)
+  const localStop = useRef(false) // 浏览器内训练的停止标志
 
   const stop = useCallback(async () => {
+    localStop.current = true
     if (sessionRef.current) {
       await fetch(`/api/train/${sessionRef.current}/stop`, { method: "POST" }).catch(() => {})
     }
@@ -79,7 +110,35 @@ export function useTrainingSocket() {
 
   const start = useCallback(async (body: TrainRequestBody) => {
     wsRef.current?.close()
+    sessionRef.current = null
     setState({ ...initialState, status: "running", algo: body.algo })
+
+    // 浏览器模式（未连接后端 / 静态部署）：表格 Q-Learning 直接在浏览器中训练
+    if ((await detectBackend()) === "offline") {
+      if (body.algo !== "qlearning") {
+        setState((s) => ({ ...s, status: "error",
+          error: "在线体验版在浏览器中运行表格 Q-Learning；PPO / DQN 需要本地启动后端（见《使用指南》安装与启动）。" }))
+        return
+      }
+      localStop.current = false
+      const hp = body.hyperparams
+      try {
+        await trainLocal({
+          maze: body.maze,
+          reward: body.reward_config as unknown as RewardConfigForm,
+          episodes: hp.episodes ?? 500,
+          learning_rate: hp.learning_rate ?? 0.1,
+          gamma: hp.gamma ?? 0.99,
+          epsilon_start: hp.epsilon_start ?? 1.0,
+          epsilon_end: hp.epsilon_end ?? 0.05,
+          seed: body.seed,
+        }, (ev) => setState((s) => applyEvent(s, ev)), () => localStop.current)
+      } catch (e) {
+        setState((s) => ({ ...s, status: "error", error: e instanceof Error ? e.message : String(e) }))
+      }
+      return
+    }
+
     try {
       const resp = await fetch("/api/train/start", {
         method: "POST",
@@ -97,34 +156,7 @@ export function useTrainingSocket() {
 
       ws.onmessage = (msg) => {
         const ev = JSON.parse(msg.data as string) as TrainEvent
-        setState((s) => {
-          switch (ev.type) {
-            case "episode":
-              return {
-                ...s,
-                episodes: [...s.episodes, ev],
-                currentEpisode: ev.episode,
-                epsilon: ev.epsilon,
-              }
-            case "step":
-              return { ...s, stepStream: [...s.stepStream, ev.pos] }
-            case "trajectory":
-              return {
-                ...s,
-                trajectory: ev.cells,
-                trajectories: [
-                  ...s.trajectories,
-                  { episode: ev.episode, cells: ev.cells, decisions: ev.decisions, gamma: ev.gamma, policy: ev.policy },
-                ],
-              }
-            case "done":
-              return { ...s, status: ev.summary.stopped ? "stopped" : "done", summary: ev.summary }
-            case "error":
-              return { ...s, status: "error", error: ev.message }
-            default:
-              return s
-          }
-        })
+        setState((s) => applyEvent(s, ev))
       }
       ws.onerror = () =>
         setState((s) => (s.status === "running" ? { ...s, status: "error", error: `WebSocket 连接异常，${BACKEND_HINT}` } : s))

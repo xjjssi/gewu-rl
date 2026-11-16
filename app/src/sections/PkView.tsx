@@ -15,7 +15,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { detectBackend } from "@/lib/backend"
 import { ACTION_ARROWS, ACTION_NAMES, MODE_STYLE } from "@/lib/decision"
+import { pkPrepareLocal } from "@/lib/localEngine"
 import {
   envStep, initialState, rlDecide, shortestPath, simulateRl, stateIndex,
   type PkEnvState, type RlDecision,
@@ -147,6 +149,15 @@ export default function PkView({ grid, reward, hyper, seed, active }: Props) {
     setLoading(true)
     setErr(null)
     try {
+      if ((await detectBackend()) === "offline") {
+        // 在线体验版：在浏览器中训练对手（算法与后端 /api/pk/prepare 一致）
+        const d = pkPrepareLocal({ maze: grid, reward, episodes: hyper.episodes, learning_rate: hyper.learning_rate,
+          gamma: hyper.gamma, epsilon_start: hyper.epsilon_start, epsilon_end: hyper.epsilon_end, seed })
+        setData({ ...d, key: cfgKey })
+        setSt(null)
+        setLogs([])
+        return
+      }
       const resp = await fetch("/api/pk/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -17,6 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { OfflineNotice } from "@/components/OfflineNotice"
+import { useBackendMode } from "@/hooks/useBackendMode"
 import type { CurriculumResult, RunDetail, RunMeta } from "@/types"
 
 const COLORS = ["#0877bd", "#2e8b57", "#f59322", "#d1495b", "#e8590c", "#6a4c93"]
@@ -43,6 +45,7 @@ function runName(cfg: { algo: string; seed: number; label?: string | null }): st
 const PAGE_SIZE = 8 // run 列表每页条数
 
 export default function CompareView({ active = true }: { active?: boolean }) {
+  const mode = useBackendMode()
   const [runs, setRuns] = useState<RunMeta[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [details, setDetails] = useState<Record<string, RunDetail>>({})
@@ -147,6 +150,7 @@ export default function CompareView({ active = true }: { active?: boolean }) {
 
   return (
     <div className="space-y-4">
+      {mode === "offline" && <OfflineNotice feature="实验对比与课程学习（实验记录落盘、多次实验叠加、课程学习对照）" />}
       <Card className="border-slate-200 bg-white">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="text-base text-slate-900">历史实验（勾选 2 条以上叠加对比）</CardTitle>
