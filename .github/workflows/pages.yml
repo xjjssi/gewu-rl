@@ -1,9 +1,9 @@
 # 在线体验版：把前端以"浏览器模式"（VITE_STATIC=1）构建并发布到 GitHub Pages。
-# 当前仓库为私有（参赛阶段防抄袭），GitHub 免费账号的私有仓库不支持 Pages，因此改为手动触发。
-# 公开仓库后启用：Settings → Pages → Source 选 "GitHub Actions"，再在 Actions 页面手动运行本工作流
-# （或在下方 on: 中加回 push: branches: [main] 实现推送即部署），地址为 https://<用户名>.github.io/<仓库名>/
+# 推送到 main 后自动部署（也可在 Actions 页面手动运行），地址为 https://<用户名>.github.io/<仓库名>/
 name: Deploy online demo
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
